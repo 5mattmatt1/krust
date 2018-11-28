@@ -3,7 +3,7 @@ const CONFIG_DATA: u32 = 0xCFC;
 
 /* Only one header configuration */
 /* Should use inheritance to allow for multiple configuration */
-struct pci_device
+struct PciDevice
 {
     bus: u8,
     slot: u8,
@@ -86,7 +86,7 @@ pub fn check_vendor(bus: u8, slot: u8) -> u16
 {
     let vendor: u16;
     let device: u16;
-    let lbus = bus as u32;
+    // let lbus = bus as u32;
     /* try and read the first configuration register. Since there are no */
     /* vendors that == 0xFFFF, it must be a non-existent device. */
     vendor = unsafe { pci_config_read_word(bus as u32, slot as u32, 0, 0) };
@@ -101,7 +101,7 @@ pub fn get_device(bus: u8, slot: u8) -> u16
 {
     let vendor: u16;
     let device: u16;
-    let lbus = bus as u32;
+    // let lbus = bus as u32;
     /* try and read the first configuration register. Since there are no */
     /* vendors that == 0xFFFF, it must be a non-existent device. */
     if check_vendor(bus, slot) != 0xFFFF
@@ -114,9 +114,8 @@ pub fn get_device(bus: u8, slot: u8) -> u16
 
 pub fn get_bar0(bus: u8, slot: u8) -> u32 
 {
-    let vendor: u16;
     let baseio: u32;
-    let lbus = bus as u32;
+    // let lbus = bus as u32;
     /* try and read the first configuration register. Since there are no */
     /* vendors that == 0xFFFF, it must be a non-existent device. */
     if check_vendor(bus, slot) != 0xFFFF
@@ -129,9 +128,8 @@ pub fn get_bar0(bus: u8, slot: u8) -> u32
 
 pub fn get_bar1(bus: u8, slot: u8) -> u32 
 {
-    let vendor: u16;
     let baseio: u32;
-    let lbus = bus as u32;
+    // let lbus = bus as u32;
     /* try and read the first configuration register. Since there are no */
     /* vendors that == 0xFFFF, it must be a non-existent device. */
     if check_vendor(bus, slot) != 0xFFFF
@@ -144,9 +142,8 @@ pub fn get_bar1(bus: u8, slot: u8) -> u32
 
 pub fn get_bar2(bus: u8, slot: u8) -> u32 
 {
-    let vendor: u16;
     let baseio: u32;
-    let lbus = bus as u32;
+    // let lbus = bus as u32;
     /* try and read the first configuration register. Since there are no */
     /* vendors that == 0xFFFF, it must be a non-existent device. */
     if check_vendor(bus, slot) != 0xFFFF
@@ -159,9 +156,8 @@ pub fn get_bar2(bus: u8, slot: u8) -> u32
 
 pub fn get_bar3(bus: u8, slot: u8) -> u32 
 {
-    let vendor: u16;
     let baseio: u32;
-    let lbus = bus as u32;
+    // let lbus = bus as u32;
     /* try and read the first configuration register. Since there are no */
     /* vendors that == 0xFFFF, it must be a non-existent device. */
     if check_vendor(bus, slot) != 0xFFFF
