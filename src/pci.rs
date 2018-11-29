@@ -1,4 +1,5 @@
-use crate::serial_println;
+use crate::{serial_println, asm};
+
 const CONFIG_ADDRESS: u32 = 0xCF8;
 const CONFIG_DATA: u32 = 0xCFC;
 
@@ -69,12 +70,13 @@ pub unsafe fn pci_conf1_read(bus: u8, devfn: u8, reg: u16) -> u32
 {
     // Should look into a u12
     let address: u32;
-    let tmp: u32;
+    // let tmp: u32;
     address = pci_conf1_address(bus, devfn, reg);
     serial_println!("PCI_CONF1_ADDRESS: {:X}", address);
-    asm!("outl %eax, %dx" :: "{dx}"(CONFIG_ADDRESS), "{eax}"(address) :: "volatile");
-    asm!("inl %dx, %eax" : "={eax}"(tmp) : "{dx}"(CONFIG_DATA) :: "volatile");
-    return tmp;
+    // asm!("outl %eax, %dx" :: "{dx}"(CONFIG_ADDRESS), "{eax}"(address) :: "volatile");
+    // asm!("inl %dx, %eax" : "={eax}"(tmp) : "{dx}"(CONFIG_DATA) :: "volatile");
+    asm::outl(CONFIG_ADDRESS, address);
+    return asm::inl(CONFIG_DATA);
 }
 
 pub unsafe fn pci_slconf1_read(bus: u8, slot: u8, devfn: u8, reg: u16) -> u32

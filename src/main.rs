@@ -7,6 +7,7 @@ mod vga_buffer;
 mod serial;
 mod pci;
 mod rtl8139;
+mod asm;
 
 use core::panic::PanicInfo;
 // use pci::scan_bus;
@@ -94,8 +95,8 @@ pub extern "C" fn _start() -> ! {
     // x86_64::instructions::int3();
     let mut rx_buffer: [u8; 1024] = [0; 1024];
     unsafe { PICS.lock().initialize() }; // new
-    let baseio_address: u32 = unsafe { pci_slconf1_read(0, 3, 0, 0x10) };
-    println!("{}", rx_buffer[0]);
+    let baseio_address: u32 = unsafe { pci_slconf1_read(0, 3, 0, 0x0) };
+    println!("0x{:X}", baseio_address);
     let success: bool = unsafe {krust::rtl8139::setup_rtl8139(baseio_address, &rx_buffer)};
     println!("Sucessful driver bootup: {}", success);
     if success
