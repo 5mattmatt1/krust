@@ -1,3 +1,4 @@
+use crate::serial_println;
 const CONFIG_ADDRESS: u32 = 0xCF8;
 const CONFIG_DATA: u32 = 0xCFC;
 
@@ -38,6 +39,56 @@ struct PciDevice
     max_latency: u8
 }
 
+
+// & 0xFC
+// Masks the register so that it is in the range {0}u[0x4, 0xFF]
+// This is due to the offsets in the PCI table being done in sets of 0x4 (a.k.a 32 bits)
+
+// & 0xF00
+// Masks the register so that it is in the range {0}u[0xFF, 0xFFFF]
+
+pub fn pci_conf1_address(bus: u8, devfn: u8, reg: u16) -> u32
+{
+    let lreg: u32 = bus as u32;
+    let ldevfn: u32 = devfn as u32;
+    let lreg: u32 = devfn as u32;
+    let lbus: u32 = bus as u32;
+    return 0x80000000 | ((lreg & 0xF00) << 16) | (lbus << 16) | (ldevfn << 8) | (lreg & 0xFC);
+}
+
+pub fn pci_slconf1_address(bus: u8, slot: u8, devfn: u8, reg: u16) -> u32
+{
+    let lreg: u32 = reg as u32;
+    let ldevfn: u32 = devfn as u32;
+    let lbus: u32 = bus as u32;
+    let lslot: u32 = slot as u32;
+    return 0x80000000 | ((lreg & 0xF00) << 16) | (lbus << 16) | (lslot << 11) | (ldevfn << 8) | (lreg & 0xFC);
+}
+
+pub unsafe fn pci_conf1_read(bus: u8, devfn: u8, reg: u16) -> u32
+{
+    // Should look into a u12
+    let address: u32;
+    let tmp: u32;
+    address = pci_conf1_address(bus, devfn, reg);
+    serial_println!("PCI_CONF1_ADDRESS: {:X}", address);
+    asm!("outl %eax, %dx" :: "{dx}"(CONFIG_ADDRESS), "{eax}"(address) :: "volatile");
+    asm!("inl %dx, %eax" : "={eax}"(tmp) : "{dx}"(CONFIG_DATA) :: "volatile");
+    return tmp;
+}
+
+pub unsafe fn pci_slconf1_read(bus: u8, slot: u8, devfn: u8, reg: u16) -> u32
+{
+    // Should look into a u12
+    let address: u32;
+    let tmp: u32;
+    address = pci_slconf1_address(bus, slot, devfn, reg);
+    serial_println!("PCI_CONF1_ADDRESS: {:X}", address);
+    asm!("outl %eax, %dx" :: "{dx}"(CONFIG_ADDRESS), "{eax}"(address) :: "volatile");
+    asm!("inl %dx, %eax" : "={eax}"(tmp) : "{dx}"(CONFIG_DATA) :: "volatile");
+    return tmp;
+}
+
 pub unsafe fn pci_config_read_word (bus: u32, slot: u32, func: u32, offset: u32) -> u16
 {
     let address: u32;
@@ -47,6 +98,7 @@ pub unsafe fn pci_config_read_word (bus: u32, slot: u32, func: u32, offset: u32)
     address = (bus << 16) | (slot << 11) |
               (func << 8) | offset | (0x80000000);
  
+    serial_println!("PCI_CONF1_ADDRESS: {:X}", address);
     /* write out the address */
     // x86_64::instructions::out(CONFIG_ADDRESS, address);
     // outl(0xCF8, address);
@@ -82,18 +134,14 @@ pub unsafe fn pci_config_read_double_word (bus: u32, slot: u32, func: u32, offse
     return tmp;
 }
 
-pub fn check_vendor(bus: u8, slot: u8) -> u16 
+// pub fn check_vendor(bus: u8, slot: u8) -> u32
+pub fn check_vendor(bus: u8, slot: u8) -> u16
 {
     let vendor: u16;
-    let device: u16;
     // let lbus = bus as u32;
     /* try and read the first configuration register. Since there are no */
     /* vendors that == 0xFFFF, it must be a non-existent device. */
     vendor = unsafe { pci_config_read_word(bus as u32, slot as u32, 0, 0) };
-    if vendor != 0xFFFF
-    {
-       device = unsafe {pci_config_read_word(bus as u32, slot as u32, 0, 2)};
-    } 
     return vendor;
 }
 

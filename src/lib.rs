@@ -8,6 +8,7 @@ pub mod serial;
 pub mod interrupts;
 pub mod gdt;
 pub mod pci;
+pub mod rtl8139;
 
 pub unsafe fn exit_qemu() {
     use x86_64::instructions::port::Port;

@@ -1,1 +1,0 @@
-type netdev_features_t = u64;
