@@ -11,6 +11,13 @@ mod rtl8139;
 use core::panic::PanicInfo;
 // use pci::scan_bus;
 
+/*
+ * Notes:
+ * Check out the following files in the linux kernel info.
+ * /net/ipv4/ *
+ * /net/socket.c
+ */
+
 /* cargo rustc -- -Z pre-link-arg=-nostartfiles */
 
 /// This function is called on panic.

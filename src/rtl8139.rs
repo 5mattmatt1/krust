@@ -1,18 +1,60 @@
 use crate::serial_println;
-const MAC05_OFFSET: u8 = 0x00;
-const MAC05_SIZE: u8 = 0x06;
-const MAR07_OFFSET: u8 = 0x08;
-const MAR07_SIZE: u8 = 0x08;
+/* Gotten from https://wiki.osdev.org/RTL8139 */
+const MAC05_OFFSET: u32 = 0x00;
+const MAR07_OFFSET: u32 = 0x08;
 const RBSTART_OFFSET: u32 = 0x30;
-const RBSTART_SIZE: u8 = 0x04;
 const CMD_OFFSET: u32 = 0x37;
-const CMD_SIZE: u8 = 1;
 const IMR_OFFSET: u32 = 0x3C;
-const IMR_SIZE: u8 = 0x02;
 const ISR_OFFSET: u32 = 0x3E;
-const ISR_SIZE: u8 = 0x02;
 const CONFIG_1_REG: u32 = 0x52;
 const RCR_OFFSET: u32 = 0x44;
+/* Gotten from drivers/net/ethernet/realtek */
+const MAC0: u32 = 0x0;
+const MAR0: u32 = 0x8;
+const TxStatus0: u32 = 0x10;
+const TxAddr0: u32 = 0x20;
+const RxBuf: u32 = 0x30;
+const ChipCmd: u32 = 0x37;
+const RxBufPtr: u32 = 0x38;
+const RxBufAddr: u32 = 0x3A;
+const IntrMask: u32 = 0x3C;
+const IntrStatus: u32 = 0x3E;
+const TxConfig: u32 = 0x40;
+const RxConfig: u32 = 0x44;
+const Timer: u32 = 0x48;
+const RxMissed: u32 = 0x4C;
+const Cfg9346: u32 = 0x50;
+const Config0: u32 = 0x51;
+const Config1: u32 = 0x52;
+const TimerInt: u32 = 0x54;
+const MediaStatus: u32 = 0x58;
+const Config3: u32 = 0x59;
+const Config4: u32 = 0x5A;
+const HltClk: u32 = 0x5B;
+const MultiIntr: u32 = 0x5C;
+const TxSummary: u32 = 0x60;
+const BasicModeCtrl: u32 = 0x62;
+const BasicModeStatus: u32 = 0x64;
+const NWayAdvert: u32 = 0x66;
+const NWayLPAR: u32 = 0x68;
+const NWayExpansion: u32 = 0x6A;
+
+/* Undocumented registers */
+// I don't trust these 
+// const FIFOTMS: u32 = 0x70;
+// const CSCR: u32 = 0x74;
+// const PARA78: u32 = 0x78;
+// const FlashReg: u32 = 0xD4;
+// const PARA7c: u32 = 0x7C;
+// const Config5: u32 = 0xD8;
+
+/* Sizes of registers */
+const MAC05_SIZE: u8 = 0x06;
+const MAR07_SIZE: u8 = 0x08;
+const RBSTART_SIZE: u8 = 0x04;
+const CMD_SIZE: u8 = 1;
+const IMR_SIZE: u8 = 0x02;
+const ISR_SIZE: u8 = 0x02;
 
 // Note:
 // bus = 0
