@@ -1,3 +1,5 @@
+use heapless::{String, Vec};
+use heapless::consts::*;
 use crate::{serial_println, println, asm};
 
 const CONFIG_ADDRESS: u32 = 0xCF8;
@@ -177,81 +179,88 @@ pub unsafe fn pci_info_dump(bus: u8, slot: u8)
     println!("Latency timer: 0x{:X}", latency_timer);
     println!("Header type: 0x{:X}", header_type);
     println!("BIST: 0x{:X}", bist);
+    let driver_info: (String<U24>, String<U24>, String<U24>);
+    driver_info = pci_parsedriver(class_code as u8, 
+                                  subclass_code as u8,
+                                  prog_if as u8);
+    println!("Class: {}", driver_info.0.as_str());
+    println!("Subclass: {}", driver_info.1.as_str());
+    println!("Prog IF: {}", driver_info.2.as_str());
 }
 
-pub fn pci_parsedriver(class: u8, subclass: u8, prog_if: u8, 
-                    mut rclass_str:  &str, rsubclass_str: &str, rprog_if_str: &str)
+pub fn pci_parsedriver(class: u8, subclass: u8, 
+    prog_if: u8) -> (String<U24>, String<U24>, String<U24>)
 {
     /* No actual support for prog_if yet */
-    let mut class_str = "";
-    let mut subclass_str = "";
-    let mut prog_if_str = "";
-    rclass_str = "Quack";
+    let mut class_str: String<U24> = String::from("");
+    let mut subclass_str: String<U24> = String::from("");
+    let mut prog_if_str: String<U24> = String::from("");
     if class == 0x0
     {
-        class_str = "Unclassified";
+        class_str = String::from("Unclassified");
         if subclass == 0x0
         {
-            subclass_str = "Non-VGA-Compatible device";
+            subclass_str = String::from("Non-VGA-Compatible device");
         } else if subclass == 0x1
         {
-            subclass_str = "VGA-Compatible Device";
+            subclass_str = String::from("VGA-Compatible Device");
         } else if subclass == 0xFF
         {
-            subclass_str = "Invalid device";
+            subclass_str = String::from("Invalid device");
         }else 
         {
-            subclass_str = "Unknown subclass";
+            subclass_str = String::from("Unknown subclass");
         }
     }else if class == 0x1
     {
-        class_str = "Mass Storage Controller";
+        class_str = String::from("Mass Storage Controller");
         if subclass == 0x0
         {
-            subclass_str = "SCSI Bus Controller";
+            subclass_str = String::from("SCSI Bus Controller");
         } else if subclass == 0x1
         {
-            subclass_str = "IDE Controller";
+            subclass_str = String::from("IDE Controller");
         } else if subclass == 0x2
         {
-            subclass_str = "Floppy Disk Controller";
+            subclass_str = String::from("Floppy Disk Controller");
         } else if subclass == 0x3
         {
-            subclass_str = "IPI Bus Controller";
+            subclass_str = String::from("IPI Bus Controller");
         } else if subclass == 0x4
         {
-            subclass_str = "RAID Controller";
+            subclass_str = String::from("RAID Controller");
         } else if subclass == 0x5
         {
-            subclass_str = "ATA Controller";
+            subclass_str = String::from("ATA Controller");
         } else if subclass == 0x6
         {
-            subclass_str = "Serial ATA";
+            subclass_str = String::from("Serial ATA");
         } else if subclass == 0x7
         {
-            subclass_str = "Serial Attached SCSI";
+            subclass_str = String::from("Serial Attached SCSI");
         } else if subclass == 0x8
         {
-            subclass_str = "Non-Volatile Memory Controller";
+            subclass_str = String::from("Non-Volatile Memory Controller");
         } else if subclass == 0x80
         {
-            subclass_str = "Other";
+            subclass_str = String::from("Other");
         }
     } else if class == 0x02
     {
-        class_str = "Network Controller";
+        class_str = String::from("Network Controller");
         match subclass {
-            0x00 => subclass_str = "Ethernet Controller",
-            0x01 => subclass_str = "Token Ring Controller",
-            0x02 => subclass_str = "FDDI Controller",
-            0x03 => subclass_str = "ATM Controller",
-            0x04 => subclass_str = "ISDN Controller",
-            0x05 => subclass_str = "WorldFip Controller",
-            0x06 => subclass_str = "PICMG 2.14 Multi Computing",
-            0x07 => subclass_str = "Infiniband Controller",
-            0x08 => subclass_str = "Fabric Controller",
-            0x80 => subclass_str = "Other",
-            _ => subclass_str = "Unknown device",
+            0x00 => subclass_str = String::from("Ethernet Controller"),
+            0x01 => subclass_str = String::from("Token Ring Controller"),
+            0x02 => subclass_str = String::from("FDDI Controller"),
+            0x03 => subclass_str = String::from("ATM Controller"),
+            0x04 => subclass_str = String::from("ISDN Controller"),
+            0x05 => subclass_str = String::from("WorldFip Controller"),
+            0x06 => subclass_str = String::from("PICMG 2.14 Multi Computing"),
+            0x07 => subclass_str = String::from("Infiniband Controller"),
+            0x08 => subclass_str = String::from("Fabric Controller"),
+            0x80 => subclass_str = String::from("Other"),
+            _ => subclass_str = String::from("Unknown device"),
         }
     }
+    return (class_str, subclass_str, prog_if_str);
 }

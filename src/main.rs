@@ -82,11 +82,14 @@ pub extern "C" fn _start() -> ! {
     unsafe { pci_info_dump(0, 3) };
     let success: bool = unsafe {krust::rtl8139::setup_rtl8139(baseio_address, &rx_buffer)};
     println!("Sucessful driver bootup: {}", success);
+    // let driver_info = pci_parsedriver()
+    /*
     let class_str: &'static str = "";
     let subclass_str: &'static str = "";
     let prog_if_str: &'static str = "";
     pci_parsedriver(0x02, 0x00, 0x00, class_str, subclass_str, prog_if_str);
     println!("Class name: {}", class_str);
+    */
     x86_64::instructions::interrupts::enable();
     krust::hlt_loop();
 }
