@@ -186,6 +186,63 @@ pub unsafe fn pci_info_dump(bus: u8, slot: u8)
     println!("Class: {}", driver_info.0.as_str());
     println!("Subclass: {}", driver_info.1.as_str());
     println!("Prog IF: {}", driver_info.2.as_str());
+    match header_type
+    {
+    0x00 => pci_info_dump00h(bus, slot);
+    0x01 => pci_info_dump01h(bus, slot);
+    0x02 => pci_info_dump02h(bus, slot);
+    _ => println!("Unknown header type");
+    }
+}
+
+pub fn pci_info_dump00h(bus: u8, slot: u8)
+{
+    let block4: u32 = pci_slconf1_read(bus, slot, 0, 0x10);
+    let block5: u32 = pci_slconf1_read(bus, slot, 0, 0x14);
+    let block6: u32 = pci_slconf1_read(bus, slot, 0, 0x18);
+    let block7: u32 = pci_slconf1_read(bus, slot, 0, 0x1C);
+    let block8: u32 = pci_slconf1_read(bus, slot, 0, 0x20);
+    let block9: u32 = pci_slconf1_read(bus, slot, 0, 0x24);
+    let blockA: u32 = pci_slconf1_read(bus, slot, 0, 0x28);
+    let blockB: u32 = pci_slconf1_read(bus, slot, 0, 0x2C);
+    let blockC: u32 = pci_slconf1_read(bus, slot, 0, 0x30);
+    let blockD: u32 = pci_slconf1_read(bus, slot, 0, 0x34);
+    let blockE: u32 = pci_slconf1_read(bus, slot, 0, 0x38);
+    let blockF: u32 = pci_slconf1_read(bus, slot, 0, 0x3C);
+}
+
+pub fn pci_info_dump01h(bus: u8, slot: u8)
+{
+    let block4: u32 = pci_slconf1_read(bus, slot, 0, 0x10);
+    let block5: u32 = pci_slconf1_read(bus, slot, 0, 0x14);
+    let block6: u32 = pci_slconf1_read(bus, slot, 0, 0x18);
+    let block7: u32 = pci_slconf1_read(bus, slot, 0, 0x1C);
+    let block8: u32 = pci_slconf1_read(bus, slot, 0, 0x20);
+    let block9: u32 = pci_slconf1_read(bus, slot, 0, 0x24);
+    let blockA: u32 = pci_slconf1_read(bus, slot, 0, 0x28);
+    let blockB: u32 = pci_slconf1_read(bus, slot, 0, 0x2C);
+    let blockC: u32 = pci_slconf1_read(bus, slot, 0, 0x30);
+    let blockD: u32 = pci_slconf1_read(bus, slot, 0, 0x34);
+    let blockE: u32 = pci_slconf1_read(bus, slot, 0, 0x38);
+    let blockF: u32 = pci_slconf1_read(bus, slot, 0, 0x3C);
+}
+
+pub fn pci_info_dump02h(bus: u8, slot: u8)
+{
+    let block04: u32 = pci_slconf1_read(bus, slot, 0, 0x10);
+    let block05: u32 = pci_slconf1_read(bus, slot, 0, 0x14);
+    let block06: u32 = pci_slconf1_read(bus, slot, 0, 0x18);
+    let block07: u32 = pci_slconf1_read(bus, slot, 0, 0x1C);
+    let block08: u32 = pci_slconf1_read(bus, slot, 0, 0x20);
+    let block09: u32 = pci_slconf1_read(bus, slot, 0, 0x24);
+    let block0A: u32 = pci_slconf1_read(bus, slot, 0, 0x28);
+    let block0B: u32 = pci_slconf1_read(bus, slot, 0, 0x2C);
+    let block0C: u32 = pci_slconf1_read(bus, slot, 0, 0x30);
+    let block0D: u32 = pci_slconf1_read(bus, slot, 0, 0x34);
+    let block0E: u32 = pci_slconf1_read(bus, slot, 0, 0x38);
+    let block0F: u32 = pci_slconf1_read(bus, slot, 0, 0x3C);
+    let block10: u32 = pci_slconf1_read(bus, slot, 0, 0x40);
+    let block11: u32 = pci_slconf1_read(bus, slot, 0, 0x44);
 }
 
 pub fn pci_parsedriver(class: u8, subclass: u8, 
@@ -195,57 +252,35 @@ pub fn pci_parsedriver(class: u8, subclass: u8,
     let mut class_str: String<U24> = String::from("");
     let mut subclass_str: String<U24> = String::from("");
     let mut prog_if_str: String<U24> = String::from("");
-    if class == 0x0
+    match class
+    {
+    0x0 => 
     {
         class_str = String::from("Unclassified");
-        if subclass == 0x0
-        {
-            subclass_str = String::from("Non-VGA-Compatible device");
-        } else if subclass == 0x1
-        {
-            subclass_str = String::from("VGA-Compatible Device");
-        } else if subclass == 0xFF
-        {
-            subclass_str = String::from("Invalid device");
-        }else 
-        {
-            subclass_str = String::from("Unknown subclass");
-        }
-    }else if class == 0x1
+        match subclass{
+        0x0 => subclass_str = String::from("Non-VGA-Compatible device");
+        0x1 => subclass_str = String::from("VGA-Compatible Device");
+        0xFF => subclass_str = String::from("Invalid device");
+        _ => subclass_str = String::from("Unknown subclass");
+    }
+    0x1 =>
     {
         class_str = String::from("Mass Storage Controller");
-        if subclass == 0x0
+        match subclass
         {
-            subclass_str = String::from("SCSI Bus Controller");
-        } else if subclass == 0x1
-        {
-            subclass_str = String::from("IDE Controller");
-        } else if subclass == 0x2
-        {
-            subclass_str = String::from("Floppy Disk Controller");
-        } else if subclass == 0x3
-        {
-            subclass_str = String::from("IPI Bus Controller");
-        } else if subclass == 0x4
-        {
-            subclass_str = String::from("RAID Controller");
-        } else if subclass == 0x5
-        {
-            subclass_str = String::from("ATA Controller");
-        } else if subclass == 0x6
-        {
-            subclass_str = String::from("Serial ATA");
-        } else if subclass == 0x7
-        {
-            subclass_str = String::from("Serial Attached SCSI");
-        } else if subclass == 0x8
-        {
-            subclass_str = String::from("Non-Volatile Memory Controller");
-        } else if subclass == 0x80
-        {
-            subclass_str = String::from("Other");
+            0x0 => subclass_str = String::from("SCSI Bus Controller");
+            0x1 => subclass_str = String::from("IDE Controller");
+            0x2 => subclass_str = String::from("Floppy Disk Controller");
+            0x3 => subclass_str = String::from("IPI Bus Controller");
+            0x4 => subclass_str = String::from("RAID Controller");
+            0x5 => subclass_str = String::from("ATA Controller");
+            0x6 => subclass_str = String::from("Serial ATA");
+            0x7 => subclass_str = String::from("Serial Attached SCSI");
+            0x8 => subclass_str = String::from("Non-Volatile Memory Controller");
+            0x80 => subclass_str = String::from("Other");
         }
-    } else if class == 0x02
+    }
+    0x02 => 
     {
         class_str = String::from("Network Controller");
         match subclass {
@@ -261,6 +296,88 @@ pub fn pci_parsedriver(class: u8, subclass: u8,
             0x80 => subclass_str = String::from("Other"),
             _ => subclass_str = String::from("Unknown device"),
         }
+    }
+    0x03 =>
+    {
+        class_str = String::from("Display Controller");
+    }
+    0x04 =>
+    {
+        class_str = String::from("Multimedia Controller");
+    }
+    0x05 =>
+    {
+        class_str = String::from("Memory Controller");
+    }
+    0x06 =>
+    {
+        class_str = String::from("Bridge Device");
+    }
+    0x07 =>
+    {
+        class_str = String::from("Simple communication Controller");
+    }
+    0x08 =>
+    {
+        class_str = String::from("Base system peripheral");
+    }
+    0x09 =>
+    {
+        class_str = String::from("Input Device Controller");
+    }
+    0x0A =>
+    {
+        class_str = String::from("Docking Station");
+    }
+    0x0B =>
+    {
+        class_str = String::from("Processor");
+    }
+    0x0C =>
+    {
+        class_str = String::from("Serial Bus Controller");
+    }
+    0x0D =>
+    {
+        class_str = String::from("Wireless Controller");
+    }
+    0x0E =>
+    {
+        class_str = String::from("Intelligent Controller");
+    }
+    0x0F =>
+    {
+        class_str = String::from("Satellite Communication Controller");
+    }
+    0x10 =>
+    {
+        class_str = String::from("Encryption Controller");
+    }
+    0x11 =>
+    {
+        class_str = String::from("Signal Processing Controller");
+    }
+    0x12 =>
+    {
+        class_str = String::from("Processing Accelerator");
+    }
+    0x13 =>
+    {
+        class_str = String::from("Non-Essential Instrumentation");
+    }
+    0x40 =>
+    {
+        class_str = String::from("Co-Processor");
+    }
+    0xFF =>
+    {
+        class_str = String::from("Unassigned Class");
+    }
+    _ =>
+    {
+        class_str = String::from("Unknown Controller");
+        subclass_str = String::from("Unknown Controller");
+        prog_if_str = String::from("Unknown Controller");
     }
     return (class_str, subclass_str, prog_if_str);
 }
