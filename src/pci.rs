@@ -39,13 +39,30 @@ const HEADER_TYPE_SHIFT: u32 = 0x10;
 const BIST_MASK: u32 = 0xFF000000;
 const BIST_SHIFT: u32 = 0x18;
 /* Header Type := 00h */
-
-
+/* Offset := 0x2C */
+const SUBSYSTEM_VENDOR_ID_MASK: u32 = 0x0000FFFF;
+const SUBSYSTEM_VENDOR_ID_SHIFT: u32 = 0x0;
+const SUBSYSTEM_ID_MASK: u32 = 0xFFFF0000;
+const SUBSYSTEM_ID_SHIFT: u32 = 0x10;
+/* 8-31 bits on offset 0x34 are reserved */
+/* Offset := 0x34 */
+const CAPABILITIES_POINTER_MASK: u32 = 0x000000FF;
+const CAPABILITIES_POINTER_SHIFT: u32 = 0x0;
+/* Offset 0x38 is entirely reserved */
+/* Offset := 0x3C */
+const INTERRUPT_LINE_MASK: u32 = 0x000000FF;
+const INTERRUPT_LINE_SHIFT: u32 = 0x0;
+const INTERRUPT_PIN_MASK: u32 = 0x0000FF00;
+const INTERRUPT_PIN_SHIFT: u32 = 0x8;
+const MIN_GRANT_MASK: u32 = 0x00FF0000;
+const MIN_GRANT_SHIFT: u32 = 0x10;
+const MAX_LATENCY_MASK: u32 = 0xFF000000;
+const MAX_LATENCY_SHIFT: u32 = 0x18;
 /* Memory block offsets */
-const BLOCK0_OFFSET: u32 = 0x00;
-const BLOCK1_OFFSET: u32 = 0x04;
-const BLOCK2_OFFSET: u32 = 0x08;
-const BLOCK3_OFFSET: u32 = 0x0C;
+// const BLOCK0_OFFSET: u32 = 0x00;
+// const BLOCK1_OFFSET: u32 = 0x04;
+// const BLOCK2_OFFSET: u32 = 0x08;
+// const BLOCK3_OFFSET: u32 = 0x0C;
 /* Only one header configuration */
 /* Should use inheritance to allow for multiple configuration */
 struct PciDevice
@@ -197,6 +214,8 @@ pub unsafe fn pci_info_dump(bus: u8, slot: u8)
 
 pub fn pci_info_dump00h(bus: u8, slot: u8)
 {
+    // Note: should probably change all these println!'s to 
+    // serial_println!'s
     let block4: u32 = pci_slconf1_read(bus, slot, 0, 0x10);
     let block5: u32 = pci_slconf1_read(bus, slot, 0, 0x14);
     let block6: u32 = pci_slconf1_read(bus, slot, 0, 0x18);
@@ -207,8 +226,30 @@ pub fn pci_info_dump00h(bus: u8, slot: u8)
     let blockB: u32 = pci_slconf1_read(bus, slot, 0, 0x2C);
     let blockC: u32 = pci_slconf1_read(bus, slot, 0, 0x30);
     let blockD: u32 = pci_slconf1_read(bus, slot, 0, 0x34);
-    let blockE: u32 = pci_slconf1_read(bus, slot, 0, 0x38);
+    // let blockE: u32 = pci_slconf1_read(bus, slot, 0, 0x38);
     let blockF: u32 = pci_slconf1_read(bus, slot, 0, 0x3C);
+    println!("Base address #0: 0x{:X}", block4);
+    println!("Base address #1: 0x{:X}", block5);
+    println!("Base address #2: 0x{:X}", block6);
+    println!("Base address #3: 0x{:X}", block7);
+    println!("Base address #4: 0x{:X}", block8);
+    println!("Base address #5: 0x{:X}", block9);
+    println!("Cardbus CIS Pointer 0x{:X}", blockA);
+    let subsystem_id: u32 = (blockB & SUBSYSTEM_ID_MASK) >> SUBSYSTEM_ID_SHIFT;
+    let subsystem_vendor_id: u32 = (blockB & SUBSYSTEM_VENDOR_ID_MASK) >> SUBSYSTEM_VENDOR_ID_SHIFT;
+    println!("Subsystem id: 0x{:X}", subsystem_id);
+    println!("Subsystem vendor id: 0x{:X}", subsystem_vendor_id);
+    println!("Expansion ROM Address: 0x{:X}", block0C);
+    let capabilities_pointer: u32 = (blockD & CAPABILITIES_POINTER_MASK) >> CAPABILITIES_POINTER_SHIFT;
+    println!("Capabilities pointer: 0x{:X}", capabilities_pointer);
+    let interrupt_line: u32 = (blockF & INTERRUPT_LINE_MASK) >> INTERRUPT_LINE_SHIFT;
+    let interrupt_pin: u32 = (blockF & INTERRUPT_PIN_MASK) >> INTERRUPT_PIN_SHIFT;
+    let min_grant: u32 = (blockF & MIN_GRANT_MASK) >> MIN_GRANT_SHIFT;
+    let max_latency: u32 = (blockF & MAX_LATENCY_MASK) >> MAX_LATENCY_SHIFT;
+    println!("Interrupt line: 0x{:X}", interrupt_line);
+    println!("Interrupt pin: 0x{:X}", interrupt_pin);
+    println!("Min Grant: 0x{:X}", min_grant);
+    println!("Max Latency: 0x{:X}", max_latency);
 }
 
 pub fn pci_info_dump01h(bus: u8, slot: u8)
