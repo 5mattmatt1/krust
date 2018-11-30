@@ -80,8 +80,9 @@ pub extern "C" fn _start() -> ! {
     let baseio_address: u32 = unsafe { pci_slconf1_read(0, 3, 0, 0x10) };
     // sprintln!("0x{:X}", baseio_address);
     unsafe { pci_info_dump(0, 3) };
-    let success: bool = unsafe {krust::rtl8139::setup_rtl8139(baseio_address, &rx_buffer)};
-    println!("Sucessful driver bootup: {}", success);
+    // Dead RTL8139 code:
+    // let success: bool = unsafe {krust::rtl8139::setup_rtl8139(baseio_address, &rx_buffer)};
+    // println!("Sucessful driver bootup: {}", success);
     // let driver_info = pci_parsedriver()
     /*
     let class_str: &'static str = "";

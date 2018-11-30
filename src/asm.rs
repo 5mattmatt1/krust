@@ -8,7 +8,7 @@ pub unsafe fn outb(dx: u32, al: u8)
 pub unsafe fn inb(dx: u32) -> u8
 {
     let al: u8;
-    asm!("inb %dx, %al" : "={al}"(value) : "{dx}"(port) :: "volatile");
+    asm!("inb %dx, %al" : "={al}"(al) : "{dx}"(dx) :: "volatile");
     al
 }
 
@@ -21,9 +21,9 @@ pub unsafe fn outw(dx: u32, ax: u16)
 #[inline]
 pub unsafe fn inw(dx: u32) -> u16
 {
-    let ax: u8;
-    asm!("inb %dx, %ax" : "={ax}"(value) : "{dx}"(port) :: "volatile");
-    al
+    let ax: u16;
+    asm!("inb %dx, %ax" : "={ax}"(ax) : "{dx}"(dx) :: "volatile");
+    ax
 }
 
 #[inline]

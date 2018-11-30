@@ -1,5 +1,6 @@
 use crate::{serial_println, asm};
 use heapless;
+use heapless::consts::*;
 
 /* Gotten from https://wiki.osdev.org/RTL8139 */
 const MAC05_OFFSET: u32 = 0x00;
@@ -10,6 +11,7 @@ const IMR_OFFSET: u32 = 0x3C;
 const ISR_OFFSET: u32 = 0x3E;
 const CONFIG_1_REG: u32 = 0x52;
 const RCR_OFFSET: u32 = 0x44;
+
 /* Gotten from drivers/net/ethernet/realtek */
 #[repr(u8)]
 enum RTL8139Registers {
@@ -71,9 +73,9 @@ enum IntrStatusBits
     RxUnderrun = 0x20,
     RxOverflow = 0x10,
     TxErr = 0x08,
-    TxOk = 0x04,
+    TxOK = 0x04,
     RxErr = 0x02,
-    RxOk = 0x01,
+    RxOK = 0x01,
     // RxAckBits = RxFIFOOver | RxOverflow | RxOk,
 }
 // TxStatusBits
@@ -160,6 +162,10 @@ enum Cfg9346Bits
 	Cfg9346_Unlock	= 0xC0,
 }
 
+const RTL8139_INTR_MASK: u16 =
+	IntrStatusBits::PCIErr as u16 | IntrStatusBits::PCSTimeout as u16 | IntrStatusBits::RxUnderrun as u16 | 
+    IntrStatusBits::RxOverflow as u16 | IntrStatusBits::RxFIFOOver as u16 | IntrStatusBits::TxErr as u16 | 
+    IntrStatusBits::TxOK as u16 | IntrStatusBits::RxErr as u16 | IntrStatusBits::RxOK as u16;
 /* Sizes of registers */
 /*
 const MAC05_SIZE: u8 = 0x06;
@@ -336,49 +342,55 @@ struct RTL8139Driver
 // Definitely need to move to a struct system
 impl RTL8139Driver
 {
-    pub unsafe fn RTL_R8(&self, offset: u32) -> u8
+    #[inline]
+    pub unsafe fn RTL_R8(&self, offset: RTL8139Registers) -> u8
     {
         let retVal: u8;
-        retVal = asm::inb(self.ioaddr + offset);
+        retVal = asm::inb(self.ioaddr + offset as u32);
         return retVal;
     }
 
-    pub unsafe fn RTL_W8(&self, offset: u32, value: u8)
+    #[inline]
+    pub unsafe fn RTL_W8(&self, offset: RTL8139Registers, value: u8)
     {
-        asm::outb(self.ioaddr + offset, value);
+        asm::outb(self.ioaddr + offset as u32, value);
     }
 
-    pub unsafe fn RTL_R16(&self, offset: u32) -> u16
+    #[inline]
+    pub unsafe fn RTL_R16(&self, offset: RTL8139Registers) -> u16
     {
         let retVal: u16;
-        retVal = asm::inw(self.ioaddr+offset);
+        retVal = asm::inw(self.ioaddr + offset as u32);
         return retVal;
     }
 
-    pub unsafe fn RTL_W16(&self, offset: u32, value: u16)
+    #[inline]
+    pub unsafe fn RTL_W16(&self, offset: RTL8139Registers, value: u16)
     {
-        asm::outw(self.ioaddr + offset, value);
+        asm::outw(self.ioaddr + offset as u32, value);
     }
 
-    pub unsafe fn RTL_R32(&self, offset: u32) -> u32
+    #[inline]
+    pub unsafe fn RTL_R32(&self, offset: RTL8139Registers) -> u32
     {
         let retVal: u32;
-        retVal = asm::inl(self.ioaddr+offset);
+        retVal = asm::inl(self.ioaddr + offset as u32);
         return retVal;
     }
 
-    pub unsafe fn RTL_W32(&self, offset: u32, value: u32)
+    #[inline]
+    pub unsafe fn RTL_W32(&self, offset: RTL8139Registers, value: u32)
     {
         asm::outl(self.ioaddr + offset, value);
     }
 
-    pub unsafe fn chip_reset(ioaddr: u32) -> bool
+    pub unsafe fn chip_reset(&self) -> bool
     {
         use RTL8139Registers::{ChipCmd};
         use ChipCmdBits::{CmdReset};
-        self.RTL_W8(ChipCmd, CmdReset);
+        self.RTL_W8(ChipCmd, CmdReset as u8);
         /* Possibly add for loop to check if it resets */
-        return ((self.RTL_R8(ChipCmd)) & CmdReset as u32) == 0;
+        return ((self.RTL_R8(ChipCmd)) & CmdReset as u8) == 0;
     }
 
     /*
@@ -394,7 +406,7 @@ impl RTL8139Driver
     }
     */
 
-    pub unsafe fn hw_start(ioaddr: u32)
+    pub unsafe fn hw_start(&self)
     {
         use RTL8139Registers::{ChipCmd, RxConfig, RxMissed, Cfg9346, IntrMask};
         use ChipCmdBits::{CmdRxEnb, CmdTxEnb};
@@ -419,13 +431,13 @@ impl RTL8139Driver
         // asm!("outl %eax, %dx" :: "{dx}"(ioaddr + ChipCmd as u32), "{eax}"(CmdRxEnb as u32 | CmdTxEnb as u32) :: "volatile");
         self.RTL_W32(ChipCmd, CmdRxEnb as u32 | CmdTxEnb as u32);
         // asm!("outl %eax, %dx" :: "{dx}"(ioaddr + RxConfig as u32), "{eax}"(AcceptBroadcast as u32 | AcceptMyPhys as u32) :: "volatile")
-        self.RTL_W32(ioaddr, RxConfig, AcceptBroadcast as u32 | AcceptMyPhys as u32);
+        self.RTL_W32(RxConfig, AcceptBroadcast as u32 | AcceptMyPhys as u32);
         // RTL_W32(ioaddr, TxConfig, rtl8139_tx_config);
 
         /* Relock Cfg9346 */
-        self.RTL_W32(ioaddr, Cfg9346, Cfg9346_Lock as u32);
+        self.RTL_W32(Cfg9346, Cfg9346_Lock as u32);
 
-        self.RTL_W32(ioaddr, RxMissed, 0);
+        self.RTL_W32(RxMissed, 0);
         // set_rx_mode()
 
         /* no early-rx interrupts */
@@ -443,7 +455,7 @@ impl RTL8139Driver
 
     unsafe fn tx_interrupt(&self)
     {
-        use RTL8139Registers::{TxStatus0, TxConfig};
+        use RTL8139Registers::{TxStatus0, TxConfig, IntrStatus};
         use TxStatusBits::{TxStatOk, TxUnderrun, TxAborted};
         use IntrStatusBits::{TxErr};
         use TxConfigBits::{TxClearAbt};
@@ -452,15 +464,15 @@ impl RTL8139Driver
         while tx_left > 0
         {
             let entry: u32 = dirty_tx % NUM_TX_DESC;
-            let txstatus: u32;
-            txstatus = self.RTL_R32(TxStatus0 as u32 + (entry * 32));
+            let txstatus: TxStatusBits;
+            txstatus = self.RTL_R32(TxStatus0 as u32 + (entry * 32)) as TxStatusBits;
             
-            if !(txstatus & (TxStatOk as u32 | TxUnderrun as u32 | TxAborted as u32))
+            if !(txstatus as u32 & (TxStatOk as u32 | TxUnderrun as u32 | TxAborted as u32)) as bool
             {
                 break;
             }
 
-            if txstatus & TxAborted
+            if txstatus as u32 & TxAborted as u32
             {
                 self.RTL_W32(TxConfig, TxClearAbt as u32);
                 self.RTL_W16(IntrStatus, TxErr as u16);
@@ -479,28 +491,29 @@ impl RTL8139Driver
             tx_left--;
         }
 
-        if (self.dirty_tx != dirty_tx)
+        if self.dirty_tx != dirty_tx
         {
             self.dirty_tx = dirty_tx;
             // mb() ?
             // netif_wake_queue();
         }
     }
-}
 
-// Note using an 8K ring... probably
-pub unsafe fn open(ioaddr: u32)
-{
-    /* Currently passing ioaddr to everything */
-    /* Would be better as a struct... */
-    // tp->tx_bufs = dma_alloc_coherent(&tp->pci_dev->dev, TX_BUF_TOT_LEN,
-	//				   &tp->tx_bufs_dma, GFP_KERNEL);
-    let txbufs: heapless::Vec<U1024>; /* Change to TX_BUF_TOL_LEN later */
-    let rxring: heapless::Vec<U1024>; /* Change to RX_BUF_TOT_LEN later */
-    // Should check from memory allocation errors, but won't for now
-    
-    // init_ring();
-    hw_start();
-    // netif_start_queue()
-    // start_thread()
+    // Note using an 8K ring... probably
+    pub unsafe fn open(&self)
+    {
+        /* Currently passing ioaddr to everything */
+        /* Would be better as a struct... */
+        // tp->tx_bufs = dma_alloc_coherent(&tp->pci_dev->dev, TX_BUF_TOT_LEN,
+        //				   &tp->tx_bufs_dma, GFP_KERNEL);
+        // Unused:
+        // let txbufs: heapless::Vec<U1024>; /* Change to TX_BUF_TOL_LEN later */
+        // let rxring: heapless::Vec<U1024>; /* Change to RX_BUF_TOT_LEN later */
+        // Should check from memory allocation errors, but won't for now
+        
+        // init_ring();
+        self.hw_start();
+        // netif_start_queue()
+        // start_thread()
+    }
 }

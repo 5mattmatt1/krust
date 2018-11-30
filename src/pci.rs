@@ -1,4 +1,4 @@
-use heapless::{String, Vec};
+use heapless::String;
 use heapless::consts::*;
 use crate::{serial_println, println, asm};
 
@@ -239,7 +239,7 @@ pub fn pci_info_dump00h(bus: u8, slot: u8)
     let subsystem_vendor_id: u32 = (blockB & SUBSYSTEM_VENDOR_ID_MASK) >> SUBSYSTEM_VENDOR_ID_SHIFT;
     println!("Subsystem id: 0x{:X}", subsystem_id);
     println!("Subsystem vendor id: 0x{:X}", subsystem_vendor_id);
-    println!("Expansion ROM Address: 0x{:X}", block0C);
+    println!("Expansion ROM Address: 0x{:X}", blockC);
     let capabilities_pointer: u32 = (blockD & CAPABILITIES_POINTER_MASK) >> CAPABILITIES_POINTER_SHIFT;
     println!("Capabilities pointer: 0x{:X}", capabilities_pointer);
     let interrupt_line: u32 = (blockF & INTERRUPT_LINE_MASK) >> INTERRUPT_LINE_SHIFT;
@@ -298,33 +298,36 @@ pub fn pci_parsedriver(class: u8, subclass: u8,
     0x0 => 
     {
         class_str = String::from("Unclassified");
-        match subclass{
-        0x0 => subclass_str = String::from("Non-VGA-Compatible device");
-        0x1 => subclass_str = String::from("VGA-Compatible Device");
-        0xFF => subclass_str = String::from("Invalid device");
-        _ => subclass_str = String::from("Unknown subclass");
-    }
+        match subclass
+        {
+            0x0 => subclass_str = String::from("Non-VGA-Compatible device"),
+            0x1 => subclass_str = String::from("VGA-Compatible Device"),
+            0xFF => subclass_str = String::from("Invalid device"),
+            _ => subclass_str = String::from("Unknown subclass"),
+        }
+    },
     0x1 =>
     {
         class_str = String::from("Mass Storage Controller");
         match subclass
         {
-            0x0 => subclass_str = String::from("SCSI Bus Controller");
-            0x1 => subclass_str = String::from("IDE Controller");
-            0x2 => subclass_str = String::from("Floppy Disk Controller");
-            0x3 => subclass_str = String::from("IPI Bus Controller");
-            0x4 => subclass_str = String::from("RAID Controller");
-            0x5 => subclass_str = String::from("ATA Controller");
-            0x6 => subclass_str = String::from("Serial ATA");
-            0x7 => subclass_str = String::from("Serial Attached SCSI");
-            0x8 => subclass_str = String::from("Non-Volatile Memory Controller");
-            0x80 => subclass_str = String::from("Other");
+            0x0 => subclass_str = String::from("SCSI Bus Controller"),
+            0x1 => subclass_str = String::from("IDE Controller"),
+            0x2 => subclass_str = String::from("Floppy Disk Controller"),
+            0x3 => subclass_str = String::from("IPI Bus Controller"),
+            0x4 => subclass_str = String::from("RAID Controller"),
+            0x5 => subclass_str = String::from("ATA Controller"),
+            0x6 => subclass_str = String::from("Serial ATA"),
+            0x7 => subclass_str = String::from("Serial Attached SCSI"),
+            0x8 => subclass_str = String::from("Non-Volatile Memory Controller"),
+            0x80 => subclass_str = String::from("Other"),
         }
-    }
+    },
     0x02 => 
     {
         class_str = String::from("Network Controller");
-        match subclass {
+        match subclass
+        {
             0x00 => subclass_str = String::from("Ethernet Controller"),
             0x01 => subclass_str = String::from("Token Ring Controller"),
             0x02 => subclass_str = String::from("FDDI Controller"),
@@ -337,88 +340,88 @@ pub fn pci_parsedriver(class: u8, subclass: u8,
             0x80 => subclass_str = String::from("Other"),
             _ => subclass_str = String::from("Unknown device"),
         }
-    }
+    },
     0x03 =>
     {
         class_str = String::from("Display Controller");
-    }
+    },
     0x04 =>
     {
         class_str = String::from("Multimedia Controller");
-    }
+    },
     0x05 =>
     {
         class_str = String::from("Memory Controller");
-    }
+    },
     0x06 =>
     {
         class_str = String::from("Bridge Device");
-    }
+    },
     0x07 =>
     {
         class_str = String::from("Simple communication Controller");
-    }
+    },
     0x08 =>
     {
         class_str = String::from("Base system peripheral");
-    }
+    },
     0x09 =>
     {
         class_str = String::from("Input Device Controller");
-    }
+    },
     0x0A =>
     {
         class_str = String::from("Docking Station");
-    }
+    },
     0x0B =>
     {
         class_str = String::from("Processor");
-    }
+    },
     0x0C =>
     {
         class_str = String::from("Serial Bus Controller");
-    }
+    },
     0x0D =>
     {
         class_str = String::from("Wireless Controller");
-    }
+    },
     0x0E =>
     {
         class_str = String::from("Intelligent Controller");
-    }
+    },
     0x0F =>
     {
         class_str = String::from("Satellite Communication Controller");
-    }
+    },
     0x10 =>
     {
         class_str = String::from("Encryption Controller");
-    }
+    },
     0x11 =>
     {
         class_str = String::from("Signal Processing Controller");
-    }
+    },
     0x12 =>
     {
         class_str = String::from("Processing Accelerator");
-    }
+    },
     0x13 =>
     {
         class_str = String::from("Non-Essential Instrumentation");
-    }
+    },
     0x40 =>
     {
         class_str = String::from("Co-Processor");
-    }
+    },
     0xFF =>
     {
         class_str = String::from("Unassigned Class");
-    }
+    },
     _ =>
     {
         class_str = String::from("Unknown Controller");
         subclass_str = String::from("Unknown Controller");
         prog_if_str = String::from("Unknown Controller");
-    }
+    },
     return (class_str, subclass_str, prog_if_str);
 }
