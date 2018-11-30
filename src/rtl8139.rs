@@ -102,15 +102,15 @@ pub unsafe fn init_rx(ioaddr: u32, rxbuffer_addr: &[u8; 1024])
 pub unsafe fn accept_tok(ioaddr: u32)
 {
     let imroffset_address: u32 = ioaddr + IMR_OFFSET;
-    // asm!("outl %eax, %dx" :: "{dx}"(imroffset_address), "{eax}"(0x5) :: "volatile");
-    asm::outl(0x5, imroffset_address);
+    asm!("outl %eax, %dx" :: "{dx}"(imroffset_address), "{eax}"(0x5) :: "volatile");
+    // asm::outl(0x5, imroffset_address);
 }
 
 pub unsafe fn accept_rok(ioaddr: u32)
 {
     let isroffset_address: u32 = ioaddr + ISR_OFFSET;
-    // asm!("outl %eax, %dx" :: "{dx}"(isroffset_address), "{eax}"(0x5) :: "volatile");
-    asm::outl(0x5, isroffset_address);
+    asm!("outl %eax, %dx" :: "{dx}"(isroffset_address), "{eax}"(0x5) :: "volatile");
+    // asm::outl(0x5, isroffset_address);
 }
 
 pub unsafe fn config_recieve_buffer_prom(ioaddr: u32)
@@ -118,19 +118,19 @@ pub unsafe fn config_recieve_buffer_prom(ioaddr: u32)
     // outportl(ioaddr + 0x44, 0xf | (1 << 7));
     // Not configuring wrap bit
     let rcr_address: u32 = ioaddr + RCR_OFFSET;
-    // asm!("outl %eax, %dx" :: "{dx}"(rcr_address), "{eax}"(0xf) :: "volatile");
-    asm::outl(0x44, rcr_address);
+    asm!("outl %eax, %dx" :: "{dx}"(rcr_address), "{eax}"(0xf) :: "volatile");
+    // asm::outl(0x44, rcr_address);
 }
 
 pub unsafe fn enable_recieve_and_transmit(ioaddr: u32)
 {
     let rete_address: u32 = ioaddr + CMD_OFFSET;
     // outportb(ioaddr + CMD_OFFSET, 0x0C); // Sets the RE and TE bits high
-    // asm!("outl %eax, %dx" :: "{dx}"(rete_address), "{eax}"(0x10) :: "volatile");
-    asm::outl(0x0c, rete_address);
+    asm!("outl %eax, %dx" :: "{dx}"(rete_address), "{eax}"(0x10) :: "volatile");
+    // asm::outl(0x0c, rete_address);
 }
 
-pub fn acknowledge_rok()
+pub unsafe fn acknowledge_rok(ioaddr: u32)
 {
     // outportw(ioaddr + ISR_OFFSET, 0x1);
 }

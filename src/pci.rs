@@ -1,8 +1,49 @@
-use crate::{serial_println, asm};
+use crate::{serial_println, println, asm};
 
 const CONFIG_ADDRESS: u32 = 0xCF8;
 const CONFIG_DATA: u32 = 0xCFC;
 
+/* References */
+/* arch/x86/pci/direct.c */
+/* https://wiki.osdev.org/PCI */
+
+/* Header Type := Any */
+/* Offset := 0x00 */
+const VENDOR_ID_MASK: u32 = 0x0000FFFF;
+const VENDOR_ID_SHIFT: u32 = 0x0;
+const DEVICE_ID_MASK: u32 = 0xFFFF0000;
+const DEVICE_ID_SHIFT: u32 = 0x10;
+/* Offset := 0x04 */
+const COMMAND_MASK: u32 = 0x0000FFFF;
+const COMMAND_SHIFT: u32 = 0x0;
+const STATUS_MASK: u32 = 0xFFFF0000;
+const STATUS_SHIFT: u32 = 0x10;
+/* Offset := 0x08 */
+const REVISION_ID_MASK: u32 = 0x000000FF;
+const REVISION_ID_SHIFT: u32 = 0x0;
+const PROG_IF_MASK: u32 = 0x0000FF00;
+const PROG_IF_SHIFT: u32 = 0x8;
+const SUBCLASS_MASK: u32 = 0x00FF0000;
+const SUBCLASS_SHIFT: u32 = 0x10;
+const CLASS_MASK: u32 = 0xFF000000;
+const CLASS_SHIFT: u32 = 0x18;
+/* Offset := 0x0C */
+const CACHE_LINE_SIZE_MASK: u32 = 0x000000FF;
+const CACHE_LINE_SIZE_SHIFT: u32 = 0x0;
+const LATENCY_TIMER_MASK: u32 = 0x0000FF00;
+const LATENCY_TIMER_SHIFT: u32 = 0x8;
+const HEADER_TYPE_MASK: u32 = 0x00FF0000;
+const HEADER_TYPE_SHIFT: u32 = 0x10;
+const BIST_MASK: u32 = 0xFF000000;
+const BIST_SHIFT: u32 = 0x18;
+/* Header Type := 00h */
+
+
+/* Memory block offsets */
+const BLOCK0_OFFSET: u32 = 0x00;
+const BLOCK1_OFFSET: u32 = 0x04;
+const BLOCK2_OFFSET: u32 = 0x08;
+const BLOCK3_OFFSET: u32 = 0x0C;
 /* Only one header configuration */
 /* Should use inheritance to allow for multiple configuration */
 struct PciDevice
@@ -21,6 +62,7 @@ struct PciDevice
     latency_timer: u8,
     header_type: u8,
     bist: u8,
+    /* Below is for 00h */
     bar0: u32,
     bar1: u32,
     bar2: u32,
@@ -81,139 +123,135 @@ pub unsafe fn pci_conf1_read(bus: u8, devfn: u8, reg: u16) -> u32
 
 pub unsafe fn pci_slconf1_read(bus: u8, slot: u8, devfn: u8, reg: u16) -> u32
 {
-    // Should look into a u12
     let address: u32;
     let tmp: u32;
     address = pci_slconf1_address(bus, slot, devfn, reg);
-    serial_println!("PCI_CONF1_ADDRESS: {:X}", address);
+    // asm::outl(CONFIG_ADDRESS, address);
+    // return asm::inl(CONFIG_DATA);
+    /* 
+     * Difference between these two... 
+     * Maybe some register clobbering is happening
+     */
     asm!("outl %eax, %dx" :: "{dx}"(CONFIG_ADDRESS), "{eax}"(address) :: "volatile");
     asm!("inl %dx, %eax" : "={eax}"(tmp) : "{dx}"(CONFIG_DATA) :: "volatile");
     return tmp;
 }
 
-pub unsafe fn pci_config_read_word (bus: u32, slot: u32, func: u32, offset: u32) -> u16
+pub unsafe fn pci_info_dump(bus: u8, slot: u8)
 {
-    let address: u32;
-    let mut tmp: u16;
- 
-    /* create configuration address as per Figure 1 */
-    address = (bus << 16) | (slot << 11) |
-              (func << 8) | offset | (0x80000000);
- 
-    serial_println!("PCI_CONF1_ADDRESS: {:X}", address);
-    /* write out the address */
-    // x86_64::instructions::out(CONFIG_ADDRESS, address);
-    // outl(0xCF8, address);
-    asm!("outl %eax, %dx" :: "{dx}"(CONFIG_ADDRESS), "{eax}"(address) :: "volatile");
+    /* Reads memory blocks for PCI bus */
+    let block0: u32 = pci_slconf1_read(bus, slot, 0, 0x00);
+    let block1: u32 = pci_slconf1_read(bus, slot, 0, 0x04);
+    let block2: u32 = pci_slconf1_read(bus, slot, 0, 0x08);
+    let block3: u32 = pci_slconf1_read(bus, slot, 0, 0x0C);
+    
+    let vendor_id: u32 = (block0 & VENDOR_ID_MASK) >> VENDOR_ID_SHIFT;
+    let device_id: u32 = (block0 & DEVICE_ID_MASK) >> DEVICE_ID_SHIFT;
 
-    /* read in the data */
-    /* (offset & 2) * 8) = 0 will choose the first word of the 32 bits register */
-    // tmp = (x86_64::instructions::inl(CONFIG_DATA) >> ((offset & 2) * 8)) & 0xffff;
-    // let tmp: u32;
-    asm!("inl %dx, %eax" : "={eax}"(tmp) : "{dx}"(CONFIG_DATA) :: "volatile");
-    return tmp;
+    let command: u32 = (block1 & COMMAND_MASK) >> COMMAND_SHIFT;
+    let status: u32 = (block1 & STATUS_MASK) >> STATUS_SHIFT;
+
+    let revision_id: u32 = (block2 & REVISION_ID_MASK) >> REVISION_ID_SHIFT;
+    let prog_if: u32 = (block2 & PROG_IF_MASK) >> PROG_IF_SHIFT;
+    let subclass_code: u32 = (block2 & SUBCLASS_MASK) >> SUBCLASS_SHIFT;
+    let class_code: u32 = (block2 & CLASS_MASK) >> CLASS_SHIFT;
+
+    let cache_line_size: u32 = (block3 & CACHE_LINE_SIZE_MASK) >> CACHE_LINE_SIZE_SHIFT;
+    let latency_timer: u32 = (block3 & LATENCY_TIMER_MASK) >> LATENCY_TIMER_SHIFT;
+    let header_type: u32 = (block3 & HEADER_TYPE_MASK) >> HEADER_TYPE_SHIFT;
+    let bist: u32 = (block3 & BIST_MASK) >> BIST_SHIFT;
+
+    println!("Vendor id: 0x{:X}", vendor_id);
+    // println!((vendor_id != 0xFFFFFFFF) ? "Valid vendor id" : "Invalid vendor id");
+    println!("Device id: 0x{:X}", device_id);
+
+    println!("Command: 0x{:X}", command);
+    println!("Status: 0x{:X}", status);
+
+    println!("Revision Id: 0x{:X}", revision_id);
+    println!("Prog IF: 0x{:X}", prog_if);
+    println!("Class code: 0x{:X}", class_code);
+    println!("Subclass code: 0x{:X}", subclass_code);
+
+    println!("Cache line size: 0x{:X}", cache_line_size);
+    println!("Latency timer: 0x{:X}", latency_timer);
+    println!("Header type: 0x{:X}", header_type);
+    println!("BIST: 0x{:X}", bist);
 }
 
-pub unsafe fn pci_config_read_double_word (bus: u32, slot: u32, func: u32, offset: u32) -> u32
+pub fn pci_parsedriver(class: u8, subclass: u8, prog_if: u8, 
+                    mut rclass_str:  &str, rsubclass_str: &str, rprog_if_str: &str)
 {
-    let address: u32;
-    let mut tmp: u32;
- 
-    /* create configuration address as per Figure 1 */
-    address = (bus << 16) | (slot << 11) |
-              (func << 8) | offset | (0x80000000);
- 
-    /* write out the address */
-    // x86_64::instructions::out(CONFIG_ADDRESS, address);
-    // outl(0xCF8, address);
-    asm!("outl %eax, %dx" :: "{dx}"(CONFIG_ADDRESS), "{eax}"(address) :: "volatile");
-
-    /* read in the data */
-    /* (offset & 2) * 8) = 0 will choose the first word of the 32 bits register */
-    // tmp = (x86_64::instructions::inl(CONFIG_DATA) >> ((offset & 2) * 8)) & 0xffff;
-    // let tmp: u32;
-    asm!("inl %dx, %eax" : "={eax}"(tmp) : "{dx}"(CONFIG_DATA) :: "volatile");
-    return tmp;
-}
-
-// pub fn check_vendor(bus: u8, slot: u8) -> u32
-pub fn check_vendor(bus: u8, slot: u8) -> u16
-{
-    let vendor: u16;
-    // let lbus = bus as u32;
-    /* try and read the first configuration register. Since there are no */
-    /* vendors that == 0xFFFF, it must be a non-existent device. */
-    vendor = unsafe { pci_config_read_word(bus as u32, slot as u32, 0, 0) };
-    return vendor;
-}
-
-pub fn get_device(bus: u8, slot: u8) -> u16 
-{
-    let vendor: u16;
-    let device: u16;
-    // let lbus = bus as u32;
-    /* try and read the first configuration register. Since there are no */
-    /* vendors that == 0xFFFF, it must be a non-existent device. */
-    if check_vendor(bus, slot) != 0xFFFF
+    /* No actual support for prog_if yet */
+    let mut class_str = "";
+    let mut subclass_str = "";
+    let mut prog_if_str = "";
+    rclass_str = "Quack";
+    if class == 0x0
     {
-       device = unsafe {pci_config_read_word(bus as u32, slot as u32, 0, 2)};
-       return device;
-    }
-    return 0xFFFF;
-}
-
-pub fn get_bar0(bus: u8, slot: u8) -> u32 
-{
-    let baseio: u32;
-    // let lbus = bus as u32;
-    /* try and read the first configuration register. Since there are no */
-    /* vendors that == 0xFFFF, it must be a non-existent device. */
-    if check_vendor(bus, slot) != 0xFFFF
+        class_str = "Unclassified";
+        if subclass == 0x0
+        {
+            subclass_str = "Non-VGA-Compatible device";
+        } else if subclass == 0x1
+        {
+            subclass_str = "VGA-Compatible Device";
+        } else if subclass == 0xFF
+        {
+            subclass_str = "Invalid device";
+        }else 
+        {
+            subclass_str = "Unknown subclass";
+        }
+    }else if class == 0x1
     {
-       baseio = unsafe {pci_config_read_double_word(bus as u32, slot as u32, 0x00, 0x10)};
-       return baseio;
-    }
-    return 0xFFFF;
-}
-
-pub fn get_bar1(bus: u8, slot: u8) -> u32 
-{
-    let baseio: u32;
-    // let lbus = bus as u32;
-    /* try and read the first configuration register. Since there are no */
-    /* vendors that == 0xFFFF, it must be a non-existent device. */
-    if check_vendor(bus, slot) != 0xFFFF
+        class_str = "Mass Storage Controller";
+        if subclass == 0x0
+        {
+            subclass_str = "SCSI Bus Controller";
+        } else if subclass == 0x1
+        {
+            subclass_str = "IDE Controller";
+        } else if subclass == 0x2
+        {
+            subclass_str = "Floppy Disk Controller";
+        } else if subclass == 0x3
+        {
+            subclass_str = "IPI Bus Controller";
+        } else if subclass == 0x4
+        {
+            subclass_str = "RAID Controller";
+        } else if subclass == 0x5
+        {
+            subclass_str = "ATA Controller";
+        } else if subclass == 0x6
+        {
+            subclass_str = "Serial ATA";
+        } else if subclass == 0x7
+        {
+            subclass_str = "Serial Attached SCSI";
+        } else if subclass == 0x8
+        {
+            subclass_str = "Non-Volatile Memory Controller";
+        } else if subclass == 0x80
+        {
+            subclass_str = "Other";
+        }
+    } else if class == 0x02
     {
-       baseio = unsafe {pci_config_read_double_word(bus as u32, slot as u32, 0x00, 0x14)};
-       return baseio;
+        class_str = "Network Controller";
+        match subclass {
+            0x00 => subclass_str = "Ethernet Controller",
+            0x01 => subclass_str = "Token Ring Controller",
+            0x02 => subclass_str = "FDDI Controller",
+            0x03 => subclass_str = "ATM Controller",
+            0x04 => subclass_str = "ISDN Controller",
+            0x05 => subclass_str = "WorldFip Controller",
+            0x06 => subclass_str = "PICMG 2.14 Multi Computing",
+            0x07 => subclass_str = "Infiniband Controller",
+            0x08 => subclass_str = "Fabric Controller",
+            0x80 => subclass_str = "Other",
+            _ => subclass_str = "Unknown device",
+        }
     }
-    return 0xFFFF;
-}
-
-pub fn get_bar2(bus: u8, slot: u8) -> u32 
-{
-    let baseio: u32;
-    // let lbus = bus as u32;
-    /* try and read the first configuration register. Since there are no */
-    /* vendors that == 0xFFFF, it must be a non-existent device. */
-    if check_vendor(bus, slot) != 0xFFFF
-    {
-       baseio = unsafe {pci_config_read_double_word(bus as u32, slot as u32, 0x00, 0x18)};
-       return baseio;
-    }
-    return 0xFFFF;
-}
-
-pub fn get_bar3(bus: u8, slot: u8) -> u32 
-{
-    let baseio: u32;
-    // let lbus = bus as u32;
-    /* try and read the first configuration register. Since there are no */
-    /* vendors that == 0xFFFF, it must be a non-existent device. */
-    if check_vendor(bus, slot) != 0xFFFF
-    {
-       baseio = unsafe {pci_config_read_double_word(bus as u32, slot as u32, 0x00, 0x1C)};
-       return baseio;
-    }
-    return 0xFFFF;
 }

@@ -70,45 +70,23 @@ pub fn enumerate_buses()
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
     use krust::interrupts::PICS;
-    // use krust::pci::pci_conf1_read;
     use krust::pci::pci_slconf1_read;
-    // use krust::pci::pci_config_read_word;
-    // use krust::pci::check_vendor;
-    /*
-    let vga_buffer = 0xb8000 as *mut u8;
-
-    for (i, &byte) in HELLO.iter().enumerate() {
-        unsafe {
-            *vga_buffer.offset(i as isize * 2) = byte;
-            *vga_buffer.offset(i as isize * 2 + 1) = 0xb;
-        }
-    }
-    */
-    // vga_buffer::print_something();
+    use krust::pci::pci_info_dump;
+    use krust::pci::pci_parsedriver;
     krust::gdt::init();
     krust::interrupts::init_idt();
-    // println!("Hello World{}", "!");
-    // serial_println!("Hello Host{}", "!");
-    // panic!("Some panic message");
-    // unsafe { exit_qemu(); }
-    // Invokes breakpoint handler.
-    // x86_64::instructions::int3();
     let mut rx_buffer: [u8; 1024] = [0; 1024];
     unsafe { PICS.lock().initialize() }; // new
-    let baseio_address: u32 = unsafe { pci_slconf1_read(0, 3, 0, 0x0) };
-    println!("0x{:X}", baseio_address);
+    let baseio_address: u32 = unsafe { pci_slconf1_read(0, 3, 0, 0x10) };
+    // sprintln!("0x{:X}", baseio_address);
+    unsafe { pci_info_dump(0, 3) };
     let success: bool = unsafe {krust::rtl8139::setup_rtl8139(baseio_address, &rx_buffer)};
     println!("Sucessful driver bootup: {}", success);
-    if success
-    {
-        for i in rx_buffer.iter() 
-        {
-            if rx_buffer[*i as usize] != 0
-            {
-                println!("i: {}, rx_buffer[i]: {}", i, rx_buffer[0]);
-            }
-        }
-    }
+    let class_str: &'static str = "";
+    let subclass_str: &'static str = "";
+    let prog_if_str: &'static str = "";
+    pci_parsedriver(0x02, 0x00, 0x00, class_str, subclass_str, prog_if_str);
+    println!("Class name: {}", class_str);
     x86_64::instructions::interrupts::enable();
     krust::hlt_loop();
 }
