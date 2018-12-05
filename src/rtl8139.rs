@@ -14,7 +14,7 @@ const RCR_OFFSET: u32 = 0x44;
 
 /* Gotten from drivers/net/ethernet/realtek */
 #[repr(u8)]
-enum RTL8139Registers {
+pub enum RTL8139Registers {
     MAC0 = 0x0,
     MAR0 = 0x8,
     TxStatus0 = 0x10,
@@ -56,7 +56,7 @@ enum RTL8139Registers {
 
 // ChipCmdBits
 #[repr(u8)]
-enum ChipCmdBits
+pub enum ChipCmdBits
 {
     CmdReset = 0x10,
     CmdRxEnb = 0x08,
@@ -65,7 +65,7 @@ enum ChipCmdBits
 }
 // IntrStatusBits
 #[repr(u16)]
-enum IntrStatusBits
+pub enum IntrStatusBits
 {
     PCIErr = 0x8000,
     PCSTimeout = 0x4000,
@@ -78,9 +78,11 @@ enum IntrStatusBits
     RxOK = 0x01,
     // RxAckBits = RxFIFOOver | RxOverflow | RxOk,
 }
+
 // TxStatusBits
 #[repr(u32)]
-enum TxStatusBits
+#[derive(Debug, Copy, Clone)]
+pub enum TxStatusBits
 {
     TxHostOwns = 0x2000,
     TxUnderrun = 0x4000,
@@ -88,10 +90,25 @@ enum TxStatusBits
     TxOutOfWindow = 0x20000000,
     TxAborted = 0x40000000,
     TxCarrierLost = 0x80000000,
+    TxInvalidStatusBit = 0,
 }
+
+pub fn u32_to_tx_status_bits(input: u32) -> TxStatusBits
+{
+    use TxStatusBits::*;
+    let uTxHostOwns: u32 = TxHostOwns as u32;
+    let uTxUnderrun: u32 = TxUnderrun as u32;
+    match input
+    {
+        uTxHostOwns => return TxHostOwns,
+        uTxUnderrun => return TxUnderrun,
+        _ => return TxInvalidStatusBit,
+    }
+}
+
 // RxStatusBits
 #[repr(u16)]
-enum RxStatusBits
+pub enum RxStatusBits
 {
     RxMulticast = 0x8000,
     RxPhysical = 0x4000,
@@ -105,7 +122,7 @@ enum RxStatusBits
 }
 
 #[repr(u8)]
-enum RxModeBits
+pub enum RxModeBits
 {
     AcceptErr	= 0x20,
 	AcceptRunt	= 0x10,
@@ -116,7 +133,7 @@ enum RxModeBits
 }
 
 #[repr(u32)]
-enum TxConfigBits
+pub enum TxConfigBits
 {
     /* Interframe Gap Time. Only TxIFG96 doesn't violate IEEE 802.3 */
     // TxIFGShift	= 24,
@@ -135,7 +152,7 @@ enum TxConfigBits
 }
 
 #[repr(u32)]
-enum RxConfigBits
+pub enum RxConfigBits
 {
     /* rx fifo threshold */
 	// RxCfgFIFOShift	= 13,
@@ -156,7 +173,7 @@ enum RxConfigBits
 }
 
 #[repr(u8)]
-enum Cfg9346Bits
+pub enum Cfg9346Bits
 {
     Cfg9346_Lock	= 0x00,
 	Cfg9346_Unlock	= 0xC0,
@@ -175,6 +192,7 @@ const CMD_SIZE: u8 = 1;
 const IMR_SIZE: u8 = 0x02;
 const ISR_SIZE: u8 = 0x02;
 */
+const NUM_TX_DESC: u8 = 4;
 
 // Note:
 // bus = 0
@@ -330,7 +348,7 @@ static const unsigned int rtl8139_tx_config =
 	TxIFG96 | (TX_DMA_BURST << TxDMAShift) | (TX_RETRY << TxRetryShift);
 */
 
-struct RTL8139Driver
+pub struct RTL8139Driver
 {
     bus: u8,
     slot: u8, /* Really u4 */
@@ -379,9 +397,30 @@ impl RTL8139Driver
     }
 
     #[inline]
+    pub unsafe fn RTL_RU32(&self, offset: u32) -> u32
+    {
+        let retVal: u32;
+        retVal = asm::inl(self.ioaddr + offset);
+        return retVal;
+    }
+
+    #[inline]
     pub unsafe fn RTL_W32(&self, offset: RTL8139Registers, value: u32)
     {
-        asm::outl(self.ioaddr + offset, value);
+        asm::outl(self.ioaddr + offset as u32, value);
+    }
+
+    pub fn new(bus: u8, slot: u8) -> RTL8139Driver
+    {
+        use crate::pci::pci_slconf1_read;
+        let baseio_address: u32 = unsafe { pci_slconf1_read(bus, slot, 0, 0x10) };
+        RTL8139Driver {
+            bus: bus, 
+            slot: slot, 
+            cur_tx: 0, 
+            dirty_tx: 0, 
+            ioaddr: baseio_address
+        }
     }
 
     pub unsafe fn chip_reset(&self) -> bool
@@ -450,29 +489,29 @@ impl RTL8139Driver
         */
 
         /* Enable all known interrupts by setting the interrupt mask */
-        self.RTL_W32(IntrMask, RTL8139_INTR_MASK);
+        self.RTL_W16(IntrMask, RTL8139_INTR_MASK);
     }
 
-    unsafe fn tx_interrupt(&self)
+    unsafe fn tx_interrupt(&mut self)
     {
         use RTL8139Registers::{TxStatus0, TxConfig, IntrStatus};
         use TxStatusBits::{TxStatOk, TxUnderrun, TxAborted};
         use IntrStatusBits::{TxErr};
         use TxConfigBits::{TxClearAbt};
-        let dirty_tx: u32 = self.dirty_tx;
-        let tx_left: u32 = self.cur_tx - self.dirty_tx;
+        let mut dirty_tx: u32 = self.dirty_tx;
+        let mut tx_left: u32 = self.cur_tx - self.dirty_tx;
         while tx_left > 0
         {
-            let entry: u32 = dirty_tx % NUM_TX_DESC;
+            let entry: u32 = dirty_tx % NUM_TX_DESC as u32;
             let txstatus: TxStatusBits;
-            txstatus = self.RTL_R32(TxStatus0 as u32 + (entry * 32)) as TxStatusBits;
+            txstatus = u32_to_tx_status_bits(self.RTL_RU32(TxStatus0 as u32 + (entry * 32)));
             
-            if !(txstatus as u32 & (TxStatOk as u32 | TxUnderrun as u32 | TxAborted as u32)) as bool
+            if !((txstatus as u32 & (TxStatOk as u32 | TxUnderrun as u32 | TxAborted as u32)) == 0)
             {
                 break;
             }
 
-            if txstatus as u32 & TxAborted as u32
+            if (txstatus as u32 & TxAborted as u32) == 0
             {
                 self.RTL_W32(TxConfig, TxClearAbt as u32);
                 self.RTL_W16(IntrStatus, TxErr as u16);
@@ -487,8 +526,8 @@ impl RTL8139Driver
                 // lfence, sfence, mfence
                 // xchgl might be a similar instruction as well
             }
-            dirty_tx++;
-            tx_left--;
+            dirty_tx += 1;
+            tx_left -= 1;
         }
 
         if self.dirty_tx != dirty_tx

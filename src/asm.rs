@@ -36,7 +36,7 @@ pub unsafe fn outl(dx: u32, eax: u32)
 pub unsafe fn inl(dx: u32) -> u32
 {
     let eax: u32;
-    asm!("inl %dx, %eax" : "={eax}"(ret) : "{dx}"(dx) :: "volatile");
+    asm!("inl %dx, %eax" : "={eax}"(eax) : "{dx}"(dx) :: "volatile");
     eax
 }
 

@@ -1,5 +1,6 @@
 #![feature(abi_x86_interrupt)]
 #![feature(asm)]
+#![feature(uniform_paths)]
 #![no_std] // don't link the Rust standard library
 
 // NEW: We need to add `pub` here to make them accessible from the outside
