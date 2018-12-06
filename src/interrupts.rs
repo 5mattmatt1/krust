@@ -40,6 +40,22 @@ lazy_static! {
             .set_handler_fn(keyboard_interrupt_handler);
         idt[usize::from(SLAVE_PCI_INTERRUPT_ID)]
             .set_handler_fn(slave_pci_interrupt_handler);
+        idt[usize::from(THIRD_INTERRUPT_ID)]
+            .set_handler_fn(third_interrupt_handler);
+        idt[usize::from(FORTH_INTERRUPT_ID)]
+            .set_handler_fn(forth_interrupt_handler);
+        idt[usize::from(FIFTH_INTERRUPT_ID)]
+            .set_handler_fn(fifth_interrupt_handler);
+        idt[usize::from(SIXTH_INTERRUPT_ID)]
+            .set_handler_fn(sixth_interrupt_handler);
+        idt[usize::from(SEPTH_INTERRUPT_ID)]
+            .set_handler_fn(septh_interrupt_handler);
+        idt[usize::from(OCTTH_INTERRUPT_ID)]
+            .set_handler_fn(octth_interrupt_handler);
+        idt[usize::from(NINTH_INTERRUPT_ID)]
+            .set_handler_fn(ninth_interrupt_handler);
+        idt[usize::from(TENTH_INTERRUPT_ID)]
+            .set_handler_fn(tenth_interrupt_handler);
         idt[usize::from(NIC_INTERRUPT_ID)]
             .set_handler_fn(nic_interrupt_handler);
         idt
@@ -103,6 +119,70 @@ extern "x86-interrupt" fn slave_pci_interrupt_handler(
     use crate::serial_println;
     serial_println!("Slave pci interrupt!");
     unsafe { PICS.lock().notify_end_of_interrupt(SLAVE_PCI_INTERRUPT_ID) }
+}
+
+extern "x86-interrupt" fn third_interrupt_handler(
+    _stack_frame: &mut ExceptionStackFrame)
+{
+    use crate::serial_println;
+    serial_println!("Third interrupt!");
+    unsafe { PICS.lock().notify_end_of_interrupt(THIRD_INTERRUPT_ID) }
+}
+
+extern "x86-interrupt" fn forth_interrupt_handler(
+    _stack_frame: &mut ExceptionStackFrame)
+{
+    use crate::serial_println;
+    serial_println!("Forth interrupt!");
+    unsafe { PICS.lock().notify_end_of_interrupt(FORTH_INTERRUPT_ID) }
+}
+
+extern "x86-interrupt" fn fifth_interrupt_handler(
+    _stack_frame: &mut ExceptionStackFrame)
+{
+    use crate::serial_println;
+    serial_println!("Fifth interrupt!");
+    unsafe { PICS.lock().notify_end_of_interrupt(FIFTH_INTERRUPT_ID) }
+}
+
+extern "x86-interrupt" fn sixth_interrupt_handler(
+    _stack_frame: &mut ExceptionStackFrame)
+{
+    use crate::serial_println;
+    serial_println!("Sixth interrupt!");
+    unsafe { PICS.lock().notify_end_of_interrupt(SIXTH_INTERRUPT_ID) }
+}
+
+extern "x86-interrupt" fn septh_interrupt_handler(
+    _stack_frame: &mut ExceptionStackFrame)
+{
+    use crate::serial_println;
+    serial_println!("Septh interrupt!");
+    unsafe { PICS.lock().notify_end_of_interrupt(SEPTH_INTERRUPT_ID) }
+}
+
+extern "x86-interrupt" fn octth_interrupt_handler(
+    _stack_frame: &mut ExceptionStackFrame)
+{
+    use crate::serial_println;
+    serial_println!("Octth interrupt!");
+    unsafe { PICS.lock().notify_end_of_interrupt(OCTTH_INTERRUPT_ID) }
+}
+
+extern "x86-interrupt" fn ninth_interrupt_handler(
+    _stack_frame: &mut ExceptionStackFrame)
+{
+    use crate::serial_println;
+    serial_println!("Ninth interrupt!");
+    unsafe { PICS.lock().notify_end_of_interrupt(NINTH_INTERRUPT_ID) }
+}
+
+extern "x86-interrupt" fn tenth_interrupt_handler(
+    _stack_frame: &mut ExceptionStackFrame)
+{
+    use crate::serial_println;
+    serial_println!("Tenth interrupt!");
+    unsafe { PICS.lock().notify_end_of_interrupt(TENTH_INTERRUPT_ID) }
 }
 
 extern "x86-interrupt" fn nic_interrupt_handler(

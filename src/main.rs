@@ -81,8 +81,6 @@ pub extern "C" fn _start() -> ! {
     let mut rx_buffer: [u8; 1024] = [0; 1024];
     unsafe { PICS.lock().initialize() }; // new
     // let baseio_address: u32 = unsafe { pci_slconf1_read(0, 3, 0, 0x10) };
-    let nic = RTL8139Driver::new(0, 3);
-    unsafe {nic.hw_start(); }
     // sprintln!("0x{:X}", baseio_address);
     // unsafe { pci_info_dump(0, 3) };
     
@@ -98,5 +96,7 @@ pub extern "C" fn _start() -> ! {
     println!("Class name: {}", class_str);
     */
     x86_64::instructions::interrupts::enable();
+    let nic = RTL8139Driver::new(0, 3);
+    unsafe {nic.hw_start(); }
     krust::hlt_loop();
 }
