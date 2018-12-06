@@ -15,14 +15,14 @@ pub unsafe fn inb(dx: u32) -> u8
 #[inline]
 pub unsafe fn outw(dx: u32, ax: u16)
 {
-    asm!("outb %ax, %dx" :: "{dx}"(dx), "{ax}"(ax) :: "volatile");
+    asm!("outw %ax, %dx" :: "{dx}"(dx), "{ax}"(ax) :: "volatile");
 }
 
 #[inline]
 pub unsafe fn inw(dx: u32) -> u16
 {
     let ax: u16;
-    asm!("inb %dx, %ax" : "={ax}"(ax) : "{dx}"(dx) :: "volatile");
+    asm!("inw %dx, %ax" : "={ax}"(ax) : "{dx}"(dx) :: "volatile");
     ax
 }
 

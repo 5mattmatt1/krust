@@ -447,6 +447,7 @@ impl RTL8139Driver
 
     pub unsafe fn hw_start(&self)
     {
+        serial_println!("Attempting to start hardware!");
         use RTL8139Registers::{ChipCmd, RxConfig, RxMissed, Cfg9346, IntrMask};
         use ChipCmdBits::{CmdRxEnb, CmdTxEnb};
         use RxModeBits::{AcceptBroadcast, AcceptMyPhys};
@@ -490,6 +491,7 @@ impl RTL8139Driver
 
         /* Enable all known interrupts by setting the interrupt mask */
         self.RTL_W16(IntrMask, RTL8139_INTR_MASK);
+        serial_println!("Set up hardware!");
     }
 
     unsafe fn tx_interrupt(&mut self)

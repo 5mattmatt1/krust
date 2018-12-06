@@ -9,8 +9,20 @@ use spin;
 pub const PIC_1_OFFSET: u8 = 32;
 pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
 pub const TIMER_INTERRUPT_ID: u8 = PIC_1_OFFSET; // new
-pub const KEYBOARD_INTERRUPT_ID: u8 = PIC_1_OFFSET + 1; // new
-pub const MOUSE_INTERRUPT_ID: u8 = PIC_1_OFFSET + 2;
+pub const KEYBOARD_INTERRUPT_ID: u8 = PIC_1_OFFSET + 0x1; // new
+/* +2 is slave pci */
+pub const SLAVE_PCI_INTERRUPT_ID: u8 = PIC_1_OFFSET + 0x2;
+pub const THIRD_INTERRUPT_ID: u8 = PIC_1_OFFSET + 0x3;
+pub const FORTH_INTERRUPT_ID: u8 = PIC_1_OFFSET + 0x4;
+pub const FIFTH_INTERRUPT_ID: u8 = PIC_1_OFFSET + 0x5;
+pub const SIXTH_INTERRUPT_ID: u8 = PIC_1_OFFSET + 0x6;
+pub const SEPTH_INTERRUPT_ID: u8 = PIC_1_OFFSET + 0x7;
+pub const OCTTH_INTERRUPT_ID: u8 = PIC_1_OFFSET + 0x8;
+pub const NINTH_INTERRUPT_ID: u8 = PIC_1_OFFSET + 0x9;
+pub const TENTH_INTERRUPT_ID: u8 = PIC_1_OFFSET + 0xA;
+pub const NIC_INTERRUPT_ID: u8 = PIC_1_OFFSET + 0xB;
+
+
 pub static PICS: spin::Mutex<ChainedPics> =
     spin::Mutex::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) });
 
@@ -26,6 +38,10 @@ lazy_static! {
             .set_handler_fn(timer_interrupt_handler); // new
         idt[usize::from(KEYBOARD_INTERRUPT_ID)]
             .set_handler_fn(keyboard_interrupt_handler);
+        idt[usize::from(SLAVE_PCI_INTERRUPT_ID)]
+            .set_handler_fn(slave_pci_interrupt_handler);
+        idt[usize::from(NIC_INTERRUPT_ID)]
+            .set_handler_fn(nic_interrupt_handler);
         idt
     };
 }
@@ -79,4 +95,20 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(
     }
 
     unsafe { PICS.lock().notify_end_of_interrupt(KEYBOARD_INTERRUPT_ID) }
+}
+
+extern "x86-interrupt" fn slave_pci_interrupt_handler(
+    _stack_frame: &mut ExceptionStackFrame)
+{
+    use crate::serial_println;
+    serial_println!("Slave pci interrupt!");
+    unsafe { PICS.lock().notify_end_of_interrupt(SLAVE_PCI_INTERRUPT_ID) }
+}
+
+extern "x86-interrupt" fn nic_interrupt_handler(
+    _stack_frame: &mut ExceptionStackFrame)
+{
+    use crate::serial_println;
+    serial_println!("Network interrupt!");
+    unsafe { PICS.lock().notify_end_of_interrupt(NIC_INTERRUPT_ID) }
 }

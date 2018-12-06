@@ -75,12 +75,14 @@ pub extern "C" fn _start() -> ! {
     use krust::pci::pci_info_dump;
     use krust::pci::pci_parsedriver;
     use krust::rtl8139::RTL8139Driver;
+    use krust::{serial_println};
     krust::gdt::init();
     krust::interrupts::init_idt();
     let mut rx_buffer: [u8; 1024] = [0; 1024];
     unsafe { PICS.lock().initialize() }; // new
     // let baseio_address: u32 = unsafe { pci_slconf1_read(0, 3, 0, 0x10) };
-    RTL8139Driver::new(0, 3);
+    let nic = RTL8139Driver::new(0, 3);
+    unsafe {nic.hw_start(); }
     // sprintln!("0x{:X}", baseio_address);
     // unsafe { pci_info_dump(0, 3) };
     
