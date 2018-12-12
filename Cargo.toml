@@ -5,13 +5,12 @@ authors = ["Grainne Henderson <grainnehenderson@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-bootloader = "0.3.4"
+# uart_16550 = "0.1.0"
+# bootloader = "0.3.4"
+register = "0.2.0"
 
 [profile.dev]
 panic = "abort"
 
 [profile.release]
 panic = "abort"
-
-[package.metadata.bootimage]
-default-target = "arm-krust.json"
