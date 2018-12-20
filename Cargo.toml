@@ -8,6 +8,7 @@ edition = "2018"
 # uart_16550 = "0.1.0"
 # bootloader = "0.3.4"
 register = "0.2.0"
+heapless = "0.4.1"
 
 [profile.dev]
 panic = "abort"

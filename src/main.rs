@@ -4,6 +4,8 @@
 
 pub mod postman;
 pub mod gpio;
+pub mod uart;
+pub mod vol;
 
 /*
 use core::intrinsics::abort;
@@ -104,9 +106,29 @@ pub extern "C" fn _start() {
     // test_led();
     use crate::gpio::enable_led;
     use crate::gpio::turn_on_led;
+    use crate::gpio::turn_off_led;
     use crate::gpio::sleep;
+    use crate::uart::{uart_setup, uart_putc, uart_puts, uart_writeaddr};
     enable_led();
     turn_on_led();
-    sleep(500000);
+    /*
     test_gpu();
+    */
+    unsafe {
+        uart_setup(); 
+        /*
+        uart_putc('u');
+        uart_putc('a');
+        uart_putc('r');
+        uart_putc('t');
+        uart_putc('\n');
+        */
+        // uart_puts("uart setup\n");
+        uart_writeaddr(0x3F200004);
+        test_gpu();
+        loop
+        {
+            asm!("nop");
+        }
+    }
 }

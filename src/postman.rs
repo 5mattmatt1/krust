@@ -3,7 +3,7 @@
 
 /* Raspberry Pi 1/Zero/Zero W */
 // const PERIPHERAL_ADDRESS: u32 = 0x20000000;
-
+use crate::vol::{write32, read32};
 /* Raspberry Pi 2 */
 const PERIPHERAL_ADDRESS: u32 = 0x3F000000;
 
@@ -18,14 +18,17 @@ const PERIPHERAL_ADDRESS: u32 = 0x3F000000;
 // const MAILBOX_STATUS_ADDR: u32 = PERIPHERAL_ADDRESS + 0xB898;
 // const MAILBOX_CONFIG_ADDR: u32 = PERIPHERAL_ADDRESS + 0xB89C;
 // const MAILBOX_WRITE_ADDR: u32 = PERIPHERAL_ADDRESS + 0xB8A0;
-const MAILBOX_READ: *mut u32 = (PERIPHERAL_ADDRESS + 0xB880) as *mut u32;
-const MAILBOX_STATUS: *mut u32 = (PERIPHERAL_ADDRESS + 0xB898) as *mut u32;
-const MAILBOX_WRITE: *mut u32 = (PERIPHERAL_ADDRESS + 0xB8A0) as *mut u32;
+const MAILBOX_READ: u32= (PERIPHERAL_ADDRESS + 0xB880) as u32;
+const MAILBOX_STATUS: u32 = (PERIPHERAL_ADDRESS + 0xB898) as u32;
+const MAILBOX_WRITE: u32 = (PERIPHERAL_ADDRESS + 0xB8A0) as u32;
+const MAILBOX_FULL: u32 = 0x80000000;
+const MAILBOX_EMPTY: u32 = 0x40000000;
 // Should be an enum
 // const HIGH_COLOR_BIT_DEPTH: u32 = 16;
 // const TRUE_COLOR_BIT_DEPTH: u32 = 24;
 // const RGBA32_BIT_DEPTH: u32 = 32;
 
+// Might actually need an align 16 here
 #[repr(C, align(4))]
 pub struct FrameBufferInfo
 {
@@ -45,8 +48,9 @@ use crate::gpio::turn_off_led;
 
 // name .req register name
 // Creates an alias for register name called name
-fn write_to_mailbox(channel: u32, mut value: u32)
+fn write_to_mailbox(channel: u32, value: u32)
 {
+	unsafe {
     /*
     tst r0, #0b1111
     movne pc, lr
@@ -78,38 +82,43 @@ fn write_to_mailbox(channel: u32, mut value: u32)
         .unreq status
         bne wait1$
         */
-        while unsafe{((*MAILBOX_STATUS) & 0x80000000) != 0}
+        while (read32(MAILBOX_STATUS) & MAILBOX_FULL) != 0
 		{
-			unsafe { asm!("nop") };
+			asm!("nop");
 		}
         /*
         add value, channel
         .unreq channel
         */
-        value |= channel;
+		// Maybe value |= was changing the address of the structure to be slightly offset?
         // str value, [mailbox, #0x20]
         // .unreq value
         // .unreq mailbox
         // pop {pc}
         // let write = unsafe { mailbox.offset(0x20) as *mut u32};
-        unsafe { *MAILBOX_WRITE = value as u32 };
+		write32(MAILBOX_WRITE, value | channel as u32);
     } else { 
 		/* Panic??? */
 		// if (value + channel) != (value | channel)
 		// {
-		turn_off_led();
+		// For some reason likes to die here with too long text...
+		use crate::uart::uart_putc;
+		// uart_putc('m');
 		// } 
+	}
 	}
 }
 
 fn read_from_mailbox(channel: u8) -> u32
 {
+	unsafe {
 	// let mailbox = MAILBOX_READ_ADDR as *const u32;
 	// This is obviously neccessary for asm,
 	// but rust would have a compile time check to make sure this doesn't overflow...
 	// So might not really be neccessary
 	// cmp r0, #15
 	// movhi pc, lr
+	let mut mail: u32 = 0;
 	if channel <= 0xF
 	{
 		// mail .req r2
@@ -120,26 +129,33 @@ fn read_from_mailbox(channel: u8) -> u32
 		// teq inchan channel
 		// .unreq inchan
 		// bne rightmail$
-		if unsafe {(*MAILBOX_READ & 0b1111) == channel as u32}
+		// if unsafe {(*MAILBOX_READ & 0b1111) == channel as u32}
+		// {
+		while (mail & 0xF) != channel as u32
 		{
 			// rightmail $
 			// let status = unsafe {mailbox.offset(0x18) as *mut u32};
-			unsafe {
-				while ((*MAILBOX_STATUS) & 0x40000000) != 0 { asm!("nop"); }
-			// and r0, mail, #0xfffffff0
-				return (*MAILBOX_READ) & 0xfffffff0;
+			while (read32(MAILBOX_STATUS) & MAILBOX_EMPTY) != 0
+			{
+				asm!("nop");
 			}
-		} else 
-		{
 			// and r0, mail, #0xfffffff0
-			return 0;
+				// mail = *MAILBOX_READ as u32;
+			mail = read32(MAILBOX_READ);
 		}
+		return mail;
+		// } else 
+		// {
+			// and r0, mail, #0xfffffff0
+		//	return 0;
+		// }
 		// .unreq mail
 		// pop {pc}
 	} else
 	{ 
 		/* Panic */ 
 		return 0;
+	}
 	}
 }
 
@@ -171,11 +187,11 @@ impl FrameBufferInfo
 		// I'm not sure if this is what is meant to happen
 		if read_from_mailbox(1) != 0
 		{
-			// turn_off_led();
+			turn_off_led();
 		}
 		if fb_info.gpu_ptr == 0
 		{
-			turn_off_led();
+			// turn_off_led();
 		}
 		return fb_info;
 	}
@@ -275,6 +291,8 @@ fn rand(x: u32) -> u32
 	return (a * x.pow(2)) + (b * x) + c;
 }
 */
+
+// Should split into postman.rs and framebuffer.rs
 
 /*
 fn drawCharacter(character: char, x: u8, y: u8)
