@@ -79,7 +79,7 @@ fn rctoe(rc: u32) -> PostmanErrorCodes
     {
         0 => return PostmanErrorCodes::MalformedStruct,
         RESPONSE_SUCCESS => return PostmanErrorCodes::PostmanSuccess,
-        RESPONSE_FAILURE => return PostmanErrorCodes::PostmanError,
+        RESPONSE_ERROR => return PostmanErrorCodes::PostmanError,
         _ => return PostmanErrorCodes::UndefinedCode,
     }
 }
@@ -87,9 +87,11 @@ fn rctoe(rc: u32) -> PostmanErrorCodes
 /*
  * Just unsafe because of call to uart_puts
  */
-unsafe fn debug_rc(rc: PostmanErrorCodes)
+unsafe fn debug_rc(debugMsg: &str, rc: PostmanErrorCodes)
 {
     use crate::uart::uart_puts;
+    
+    uart_puts(debugMsg);
     if rc == PostmanErrorCodes::MalformedStruct
     {
         uart_puts("Malformed Struct.\n");
@@ -176,13 +178,13 @@ pub fn fb_init()
         
         tag_vscreensize: 0x00048004, 
         tag_vss_bitwidth: 8, 
-        tag_vss_padding: 0, 
+        tag_vss_padding: 8, /* 0 */ 
         tag_vss_width: 640, 
         tag_vss_height: 480,
         
         tag_bitdepth: 0x00048005, 
         tag_bd_bitwidth: 4, 
-        tag_bd_padding: 0, 
+        tag_bd_padding: 4, /* 0 */ 
         tag_bd_bitdepth: 24,
         
         end_tag: 0,
@@ -202,7 +204,7 @@ pub fn fb_init()
         
         tag_framebuffer_request: 0x00040001,
         tag_fbr_bitwidth: 8,
-        tag_fbr_padding: 0,
+        tag_fbr_padding: 4, /* 0 */
         tag_fbr_alignment: 16,
         tag_fbr_padding2: 0,
 
@@ -217,70 +219,33 @@ pub fn fb_init()
         0];
     */
     use crate::uart::{uart_puts, uart_putc, uart_writeaddr};
+    use crate::memory::{mem_v2p};
+
     unsafe
     {
-        uart_puts("Channel: ");
-        uart_putc((0x30 + PROPERTY_CHANNEL) as char);
-        uart_putc('\n');
-        // us_mailbox_send(&buffer[0] as *const u32 as usize as u32, PROPERTY_CHANNEL);
-        us_mailbox_send(&buffer as *const FbDescMsg as usize as u32, PROPERTY_CHANNEL);
-        // uart_writeaddr(&buffer as *const FbDescMsg as usize);
-        if (&buffer as *const FbDescMsg as usize as u32) & 0xF == 0
-        {
-            uart_puts("6\n");
-        }
-        // No overwrite is equal to zero
-        if buffer.response_code == 0x80000000
-        {
-            uart_puts("1\n");
-        } else if buffer.response_code == 0x80000001
-        {
-            uart_puts("e\n");
-        } else
-        {
-            uart_puts("0\n");
-        }
-
-        if buffer.tag_ss_width == 640
-        {
-            uart_puts("Valid width!\n");
-        }
-
-        if buffer.tag_ss_height == 480
-        {
-            uart_puts("Valid height!\n");
-        }
-        // us_mailbox_send(&get_fb[0] as *const u32 as usize as u32, PROPERTY_CHANNEL);
+        us_mailbox_send(&buffer as *const FbDescMsg as usize as u32,
+                        PROPERTY_CHANNEL);
+        debug_rc("Framebuffer Description Status: ", 
+                rctoe(buffer.response_code));
+        
         us_mailbox_send(&get_fb as *const FbInitMsg as usize as u32, PROPERTY_CHANNEL);
-        if get_fb.tag_fbr_padding != 0
-        {
-            uart_puts("fb1\n");
-            // uart_writeaddr(get_fb.tag_fbr_padding as usize);
-        }
 
-
-        if get_fb.tag_fbr_padding2 != 0
-        {
-            uart_puts("fb2\n");
-            // uart_writeaddr(get_fb.tag_fbr_padding2 as usize);
-        }
 
         // let fb_len: u32 = get_fb.tag_fbr_padding2;
         let fb = get_fb.tag_fbr_padding as *const [u32; 640*480*24];
 
+        debug_rc("Framebuffer Init Status: ", 
+                rctoe(get_fb.response_code));
+        
+        /*
         if get_fb.response_code == 0x80000000
         {
             uart_puts("FB Success!\n");
         }
-
-        /*
-        if set_blank_screen(0)
-        {
-            uart_puts("Blank screen!\n");
-        }
         */
-        debug_rc(release_buffer());
-        // render(get_fb.tag_fbr_padding, 0, 0, 640, 480, 24);
+
+        // debug_rc(release_buffer());
+        render(get_fb.tag_fbr_padding, 0, 0, 640, 480, 24);
         /*
         // Size is odd, but we'll see...
         if (640*480*24) == get_fb.tag_fbr_padding2
@@ -414,7 +379,7 @@ pub fn render(addr: u32,
 pub fn draw_pixel(addr: u32, x: u32, y: u32, phy_width: u32, bit_depth: u32, color: u32)
 {
     let framebuffer = addr as *const u32;
-    let pixel_offset = (x + (y * phy_width)) * bit_depth;
+    let pixel_offset = (x + (y * phy_width)) * bit_depth * 4;
     let pixel = unsafe {framebuffer.offset(pixel_offset as isize) as *mut u32};
     unsafe {*pixel = color};
 }

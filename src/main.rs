@@ -6,6 +6,7 @@ pub mod postman;
 pub mod gpio;
 pub mod uart;
 pub mod vol;
+pub mod memory;
 
 const RPI_VECTOR_START: u32 = 0x0;
 
