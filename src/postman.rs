@@ -1,326 +1,511 @@
-// Based off tutorial from:
-// https://www.cl.cam.ac.uk/projects/raspberrypi/tutorials/os/screen01.html
+/* 
+ * Lots of things changed between pi versions.
+ * Going to try and use the property channel to get a framebuffer.
+ */
 
-/* Raspberry Pi 1/Zero/Zero W */
-// const PERIPHERAL_ADDRESS: u32 = 0x20000000;
 use crate::vol::{write32, read32};
 /* Raspberry Pi 2 */
 const PERIPHERAL_ADDRESS: u32 = 0x3F000000;
 
-// Note: 
-// Pine64 GPU is a Mali-400 MP2
-
 // Mailbox addresses
-// const MAILBOX_BASE_ADDR: u32 = PERIPHERAL_ADDRESS + 0xB880;
-// const MAILBOX_READ_ADDR: u32 = PERIPHERAL_ADDRESS + 0xB880;
-// const MAILBOX_POLL_ADDR: u32 = PERIPHERAL_ADDRESS + 0xB890;
-// const MAILBOX_SENDER_ADDR: u32 = PERIPHERAL_ADDRESS + 0xB894;
-// const MAILBOX_STATUS_ADDR: u32 = PERIPHERAL_ADDRESS + 0xB898;
-// const MAILBOX_CONFIG_ADDR: u32 = PERIPHERAL_ADDRESS + 0xB89C;
-// const MAILBOX_WRITE_ADDR: u32 = PERIPHERAL_ADDRESS + 0xB8A0;
 const MAILBOX_READ: u32= (PERIPHERAL_ADDRESS + 0xB880) as u32;
 const MAILBOX_STATUS: u32 = (PERIPHERAL_ADDRESS + 0xB898) as u32;
 const MAILBOX_WRITE: u32 = (PERIPHERAL_ADDRESS + 0xB8A0) as u32;
 const MAILBOX_FULL: u32 = 0x80000000;
 const MAILBOX_EMPTY: u32 = 0x40000000;
-// Should be an enum
-// const HIGH_COLOR_BIT_DEPTH: u32 = 16;
-// const TRUE_COLOR_BIT_DEPTH: u32 = 24;
-// const RGBA32_BIT_DEPTH: u32 = 32;
+const PROPERTY_CHANNEL: u8 = 8;
 
-// Might actually need an align 16 here
-#[repr(C, align(4))]
-pub struct FrameBufferInfo
+/*
+ * Response codes given by 
+ */
+const RESPONSE_SUCCESS: u32 = 0x80000000;
+const RESPONSE_ERROR: u32 = 0x80000001;
+
+#[repr(u32)]
+#[derive(PartialEq)]
+enum PostmanErrorCodes
 {
-    phy_width: u32,
-    phy_height: u32,
-    virt_width: u32,
-    virt_height: u32,
-    gpu_pitch: u32,
-    bit_depth: u32, /* Could benefit from an enum */
-    x: u32,
-    y: u32,
-    gpu_ptr: u32,
-    gpu_size: u32,
+    MalformedStruct = 0x0,
+    PostmanSuccess = 0x80000000,
+    PostmanError = 0x80000001,
+    UndefinedCode = 0xFFFFFFFF,
 }
 
-use crate::gpio::turn_off_led;
+/*
+ * Should I document certain codes for the property channel?
+ */
 
-// name .req register name
-// Creates an alias for register name called name
-fn write_to_mailbox(channel: u32, value: u32)
+unsafe fn us_mailbox_read(channel: u8) -> u32
 {
-	unsafe {
-    /*
-    tst r0, #0b1111
-    movne pc, lr
-    cmp r1, #15
-    movhi pc, lr
-    */
-    // let mailbox = MAILBOX_BASE_ADDR as *const u32;
-    if ((value & 0xF) == 0) && (channel < 0xF)
+    let mut status: u32;
+    let mut result: u32;
+    loop
     {
-        /*
-        channel .req r1
-        value .req r2
-        mov value, r0
-        push {lr}
-        bl GetMailboxBase
-        mailbox .req r0
-        */
-		// Maybe use MAILBOX_STATUS_ADDR as *mut u32
-		// Or hell maybe even make it known that MAILBOX_STATUS_ADDR
-		// Is a const pointer from the beginning, idk
-		// And then I lose the unsafe code here?
-        // let status = unsafe { mailbox.offset(0x18) as *mut u32};
-        // Wait until a valid status
-        /*
-        wait1$:
-        status .req r3
-        ldr status, [mailbox, #0x18]
-        tst status, #0x0x80000000
-        .unreq status
-        bne wait1$
-        */
-        while (read32(MAILBOX_STATUS) & MAILBOX_FULL) != 0
-		{
-			asm!("nop");
-		}
-        /*
-        add value, channel
-        .unreq channel
-        */
-		// Maybe value |= was changing the address of the structure to be slightly offset?
-        // str value, [mailbox, #0x20]
-        // .unreq value
-        // .unreq mailbox
-        // pop {pc}
-        // let write = unsafe { mailbox.offset(0x20) as *mut u32};
-		write32(MAILBOX_WRITE, value | channel as u32);
-    } else { 
-		/* Panic??? */
-		// if (value + channel) != (value | channel)
-		// {
-		// For some reason likes to die here with too long text...
-		use crate::uart::uart_putc;
-		// uart_putc('m');
-		// } 
-	}
-	}
+        loop 
+        {
+            status = read32(MAILBOX_STATUS);
+            if status == MAILBOX_EMPTY
+            {
+                break;
+            }
+        }
+        result = read32(MAILBOX_READ);
+        if (result & 0xF) == channel as u32
+        {
+            break;
+        }  
+    }
+    return result;
 }
 
-fn read_from_mailbox(channel: u8) -> u32
+unsafe fn us_mailbox_send(mail: u32, channel: u8)
 {
-	unsafe {
-	// let mailbox = MAILBOX_READ_ADDR as *const u32;
-	// This is obviously neccessary for asm,
-	// but rust would have a compile time check to make sure this doesn't overflow...
-	// So might not really be neccessary
-	// cmp r0, #15
-	// movhi pc, lr
-	let mut mail: u32 = 0;
-	if channel <= 0xF
-	{
-		// mail .req r2
-		// ldr mail, [mailbox, #0]
-		// let mail = unsafe {mailbox as *mut u32};
-		// inchan .req r3
-		// and inchan,mail,#0b1111
-		// teq inchan channel
-		// .unreq inchan
-		// bne rightmail$
-		// if unsafe {(*MAILBOX_READ & 0b1111) == channel as u32}
-		// {
-		while (mail & 0xF) != channel as u32
-		{
-			// rightmail $
-			// let status = unsafe {mailbox.offset(0x18) as *mut u32};
-			while (read32(MAILBOX_STATUS) & MAILBOX_EMPTY) != 0
-			{
-				asm!("nop");
-			}
-			// and r0, mail, #0xfffffff0
-				// mail = *MAILBOX_READ as u32;
-			mail = read32(MAILBOX_READ);
-		}
-		return mail;
-		// } else 
-		// {
-			// and r0, mail, #0xfffffff0
-		//	return 0;
-		// }
-		// .unreq mail
-		// pop {pc}
-	} else
-	{ 
-		/* Panic */ 
-		return 0;
-	}
-	}
+    let mut status: u32;
+    loop
+    {
+        status = read32(MAILBOX_STATUS);
+        if status != MAILBOX_FULL
+        {
+            break;
+        }
+    }
+
+    write32(MAILBOX_WRITE, mail | channel as u32);
 }
 
-impl FrameBufferInfo
+fn rctoe(rc: u32) -> PostmanErrorCodes
 {
-	// True types:
-	// width: u12
-	// height: u12
-	// bitDepth: u5
-	pub fn new(width: u16, height: u16, bit_depth: u8) -> FrameBufferInfo
-	{
-		// if width < 4096 && height < 4096 && bitDepth < 32
-		// {
-        let fb_info = FrameBufferInfo { 
-            phy_width: width as u32, 
-            phy_height: height as u32, 
-            virt_width: width as u32,
-            virt_height: height as u32,
-            gpu_pitch: 0,
-            bit_depth: bit_depth as u32,
-            x: 0,
-            y: 0,
-            gpu_ptr: 0,
-            gpu_size: 0
-        };
-
-        let fb_addr = &fb_info as *const FrameBufferInfo as usize as u32;
-		write_to_mailbox(1, fb_addr + 0x40000000);
-		// I'm not sure if this is what is meant to happen
-		if read_from_mailbox(1) != 0
-		{
-			turn_off_led();
-		}
-		if fb_info.gpu_ptr == 0
-		{
-			// turn_off_led();
-		}
-		return fb_info;
-	}
-
-	// More like render gradient...
-	pub fn render(&mut self)
-	{
-		let mut color = 0;
-		// drawRow$:
-		// ...
-		// sub y, #1
-		// ...
-		// teq y, #0
-		// bne drawRow$
-		for j in 0..self.y
-		{
-			// drawPixel$:
-			// ...
-			// sub x, #1
-			// teq x, #0
-			// bne drawPixel$
-			for i in 0..self.x
-			{
-				// add fbAddr, #2
-				// addr_offset += 2;
-				// strh colour, [fbAddr]
-				// pixel = unsafe {framebuffer.offset(addr_offset) as *mut u32};
-				// *pixel = color;
-				self.draw_pixel(i, j, color);
-			}
-			// add colour, #1
-			color += 1;
-		}
-	}
-	
-	pub fn draw_pixel(&mut self, x: u32, y: u32, color: u32)
-	{
-		let framebuffer = self.gpu_ptr as *const u32;
-		let pixel_offset = (x + (y * self.phy_width)) * self.bit_depth;
-		let pixel = unsafe {framebuffer.offset(pixel_offset as isize) as *mut u32};
-		unsafe {*pixel = color};
-	}
-	
-	pub fn draw_line(&mut self, mut x0: i32, x1: i32, mut y0: i32, y1: i32, color: u32)
-	{
-		let delta_x: i32;
-		let neg_delta_y: i32;
-		let step_x: i32;
-        let step_y: i32;
-		let mut error: i32;
-		if x1 > x0
-		{
-			delta_x = x1 - x0;
-			step_x = 1;
-		} else
-		{
-			delta_x = x1 - x0;
-			step_x = -1;
-		}
-		
-		if y1 > y0
-		{
-			neg_delta_y = -(y1 - y0);
-			step_y = 1;
-		} else
-		{
-			neg_delta_y = -(y1 - y0);
-			step_y = -1;
-		}
-		
-		// Bitshift by one is to simulate multiplication by 2
-		error = 0;
-		while x0 != x1 + step_x || y0 != y1 + step_y
-		{
-			self.draw_pixel(x0 as u32, y0 as u32, color);
-			if (error << 1) > neg_delta_y
-			{
-				x0 += step_x;
-				error += neg_delta_y;
-			} else if (error << 1) < delta_x
-			{
-				y0 += step_y;
-				error += delta_x;
-			}
-		}
-	}
+    match rc
+    {
+        0 => return PostmanErrorCodes::MalformedStruct,
+        RESPONSE_SUCCESS => return PostmanErrorCodes::PostmanSuccess,
+        RESPONSE_FAILURE => return PostmanErrorCodes::PostmanError,
+        _ => return PostmanErrorCodes::UndefinedCode,
+    }
 }
 
-// Needs to be moved to random.rs
-// x acts as the seed
 /*
-fn rand(x: u32) -> u32
+ * Just unsafe because of call to uart_puts
+ */
+unsafe fn debug_rc(rc: PostmanErrorCodes)
 {
-	let a = 0xEF00;
-	let b = (a + 1) % 4;
-	let c = 0xFE01;
-	return (a * x.pow(2)) + (b * x) + c;
+    use crate::uart::uart_puts;
+    if rc == PostmanErrorCodes::MalformedStruct
+    {
+        uart_puts("Malformed Struct.\n");
+    } else if rc == PostmanErrorCodes::PostmanSuccess
+    {
+        uart_puts("Success!\n");
+    } else if rc == PostmanErrorCodes::PostmanError
+    {
+        uart_puts("Error :(.\n");
+    } else if rc == PostmanErrorCodes::UndefinedCode
+    {
+        uart_puts("Unknown error code.\n");
+    }
+}
+
+#[repr(C, align(16))]
+struct FbDescMsg
+{
+    buf_len: u32,
+    response_code: u32,
+    
+    tag_screensize: u32,
+    tag_ss_bitwidth: u32,
+    tag_ss_padding: u32,
+    tag_ss_width: u32,
+    tag_ss_height: u32,
+
+    tag_vscreensize: u32,
+    tag_vss_bitwidth: u32,
+    tag_vss_padding: u32,
+    tag_vss_width: u32,
+    tag_vss_height: u32,
+
+    tag_bitdepth: u32,
+    tag_bd_bitwidth: u32,
+    tag_bd_padding: u32,
+    tag_bd_bitdepth: u32,
+
+    end_tag: u32, 
+}
+
+/* 
+ * Could I template this with different sized arrays?
+ * Possibly, but Rust is odd when it comes to arrays with size determined
+ * at runtime, and I don't know if a heapless vector would have the same
+ * format...
+ * Should look into generic array crate. to at least have templates work.
+ */
+#[repr(C, align(16))]
+struct FbInitMsg
+{
+    buf_len: u32,
+    response_code: u32,
+    
+    tag_framebuffer_request: u32,
+    tag_fbr_bitwidth: u32,
+    tag_fbr_padding: u32, /* Actually framebuffer pointer */
+    tag_fbr_alignment: u32,
+    tag_fbr_padding2: u32, /* Actually framebuffer size */
+
+    end_tag: u32,
+}
+
+
+pub fn fb_init()
+{
+    // 80, /* The whole buffer is 80 bytes */
+    // 0, /* Request response code is zero */
+    // 0x00048003, 8, 0, 640, 480, /* This tag sets the screen size to 640 x 480 */
+    // 0x00048004, 8, 0, 640, 480, /* This tag sets the virtual screen size to 640 x 480 */
+    // 0x00048005, 4, 0, 24, /* This tag sets the depth to 24 bits */
+    // 0,
+    // 0, 0, 0
+    /* Could add some args but for now this is good... */
+    let buffer: FbDescMsg = FbDescMsg {
+        buf_len: 80, 
+        response_code: 0, 
+        
+        tag_screensize: 0x00048003, 
+        tag_ss_bitwidth: 8, 
+        tag_ss_padding: 0, 
+        tag_ss_width: 640, 
+        tag_ss_height: 480,
+        
+        tag_vscreensize: 0x00048004, 
+        tag_vss_bitwidth: 8, 
+        tag_vss_padding: 0, 
+        tag_vss_width: 640, 
+        tag_vss_height: 480,
+        
+        tag_bitdepth: 0x00048005, 
+        tag_bd_bitwidth: 4, 
+        tag_bd_padding: 0, 
+        tag_bd_bitdepth: 24,
+        
+        end_tag: 0,
+    };
+    /* [u32; 20] = 
+        [80, 
+        0, 
+        0x00048003, 8, 0, 640, 480,
+        0x00048004, 8, 0, 640, 480,
+        0x00048005, 4, 0, 24,
+        0,
+        0, 0, 0]; */
+
+    let get_fb: FbInitMsg = FbInitMsg {
+        buf_len: 32,
+        response_code: 0,
+        
+        tag_framebuffer_request: 0x00040001,
+        tag_fbr_bitwidth: 8,
+        tag_fbr_padding: 0,
+        tag_fbr_alignment: 16,
+        tag_fbr_padding2: 0,
+
+        end_tag: 0,
+    };
+    
+    /*
+        [u32; 8] = 
+        [32,
+        0,
+        0x00040001, 8, 0, 16, 0,
+        0];
+    */
+    use crate::uart::{uart_puts, uart_putc, uart_writeaddr};
+    unsafe
+    {
+        uart_puts("Channel: ");
+        uart_putc((0x30 + PROPERTY_CHANNEL) as char);
+        uart_putc('\n');
+        // us_mailbox_send(&buffer[0] as *const u32 as usize as u32, PROPERTY_CHANNEL);
+        us_mailbox_send(&buffer as *const FbDescMsg as usize as u32, PROPERTY_CHANNEL);
+        // uart_writeaddr(&buffer as *const FbDescMsg as usize);
+        if (&buffer as *const FbDescMsg as usize as u32) & 0xF == 0
+        {
+            uart_puts("6\n");
+        }
+        // No overwrite is equal to zero
+        if buffer.response_code == 0x80000000
+        {
+            uart_puts("1\n");
+        } else if buffer.response_code == 0x80000001
+        {
+            uart_puts("e\n");
+        } else
+        {
+            uart_puts("0\n");
+        }
+
+        if buffer.tag_ss_width == 640
+        {
+            uart_puts("Valid width!\n");
+        }
+
+        if buffer.tag_ss_height == 480
+        {
+            uart_puts("Valid height!\n");
+        }
+        // us_mailbox_send(&get_fb[0] as *const u32 as usize as u32, PROPERTY_CHANNEL);
+        us_mailbox_send(&get_fb as *const FbInitMsg as usize as u32, PROPERTY_CHANNEL);
+        if get_fb.tag_fbr_padding != 0
+        {
+            uart_puts("fb1\n");
+            // uart_writeaddr(get_fb.tag_fbr_padding as usize);
+        }
+
+
+        if get_fb.tag_fbr_padding2 != 0
+        {
+            uart_puts("fb2\n");
+            // uart_writeaddr(get_fb.tag_fbr_padding2 as usize);
+        }
+
+        // let fb_len: u32 = get_fb.tag_fbr_padding2;
+        let fb = get_fb.tag_fbr_padding as *const [u32; 640*480*24];
+
+        if get_fb.response_code == 0x80000000
+        {
+            uart_puts("FB Success!\n");
+        }
+
+        /*
+        if set_blank_screen(0)
+        {
+            uart_puts("Blank screen!\n");
+        }
+        */
+        debug_rc(release_buffer());
+        // render(get_fb.tag_fbr_padding, 0, 0, 640, 480, 24);
+        /*
+        // Size is odd, but we'll see...
+        if (640*480*24) == get_fb.tag_fbr_padding2
+        {
+            uart_puts("Correct size\n");
+        } else
+        {
+            uart_puts("Incorrect size\n");
+        }
+        */
+    }
+}
+
+#[repr(C, align(16))]
+struct BlankScreenMsg
+{
+    buf_len: u32,
+    response_code: u32,
+
+    tag_on: u32,
+    tag_on_bitwidth: u32,
+    tag_on_response: u32,
+    tag_on_state: u32,
+
+    end_tag: u32,
+}
+
+pub fn set_blank_screen(on: u32) -> bool
+{
+    let bls_msg: BlankScreenMsg = BlankScreenMsg {
+        buf_len: 28,
+        response_code: 0,
+        
+        tag_on: 0x00040002,
+        tag_on_bitwidth: 4,
+        tag_on_response: 0,
+        tag_on_state: on,
+        
+        end_tag: 0,
+    };
+    
+    unsafe 
+    {
+        us_mailbox_send(&bls_msg as *const BlankScreenMsg as usize as u32, PROPERTY_CHANNEL);
+    }
+
+    return bls_msg.response_code == RESPONSE_SUCCESS;
+}
+
+#[repr(C, align(16))]
+struct ReleaseBufMsg
+{
+    buf_len: u32,
+    response_code: u32,
+
+    tag_release_buffer: u32, /* 0x00048001 */
+    tag_rb_bitwidth: u32,
+
+    end_tag: u32,
+}
+
+
+fn release_buffer() -> PostmanErrorCodes
+{
+    let rb_msg: ReleaseBufMsg = ReleaseBufMsg {
+        buf_len: 20,
+        response_code: 0,
+
+        tag_release_buffer: 0x00048001,
+        tag_rb_bitwidth: 0,
+
+        end_tag: 0,
+    };
+
+    return rctoe(rb_msg.response_code);
+}
+
+/*
+#[repr(C, align(16))]
+struct ScreenSizeMsg
+{
+    buf_len: u32,
+    response_code: u32,
+
+    tag_screensize: u32,
+    tag_ss_bitwidth: u32,
+    tag_ss_response: u32,
+    tag_ss_width: u32,
+    tag_ss_height: u32,
+
+    end_tag: u32,
 }
 */
 
-// Should split into postman.rs and framebuffer.rs
+/*
+ * Should move to framebuffer.rs eventually
+ */
+pub fn render(addr: u32, 
+            x: u32, y: u32, 
+            phy_width: u32, phy_height: u32, 
+            bit_depth: u32)
+{
+    let mut color = 0;
+    // drawRow$:
+    // ...
+    // sub y, #1
+    // ...
+    // teq y, #0
+    // bne drawRow$
+    for j in y..phy_height
+    {
+        // drawPixel$:
+        // ...
+        // sub x, #1
+        // teq x, #0
+        // bne drawPixel$
+        for i in x..phy_width
+        {
+            // add fbAddr, #2
+            // addr_offset += 2;
+            // strh colour, [fbAddr]
+            // pixel = unsafe {framebuffer.offset(addr_offset) as *mut u32};
+            // *pixel = color;
+            draw_pixel(addr, i, j, phy_width, bit_depth, color);
+        }
+        // add colour, #1
+        color += 54;
+    }
+}
+
+pub fn draw_pixel(addr: u32, x: u32, y: u32, phy_width: u32, bit_depth: u32, color: u32)
+{
+    let framebuffer = addr as *const u32;
+    let pixel_offset = (x + (y * phy_width)) * bit_depth;
+    let pixel = unsafe {framebuffer.offset(pixel_offset as isize) as *mut u32};
+    unsafe {*pixel = color};
+}
+
 
 /*
-fn drawCharacter(character: char, x: u8, y: u8)
+pub fn render(&mut self)
 {
-	// Need a font address
-	let font = unsafe {FONT_ADDRESS.offset(character as u8 * 16)};
-	for row in 0..15
-	{
-		let bits = readByte(charAddress + row)
-		for bit in 0..7
-		{
-			if ((bits >> bit) & 0x1) == 0
-			{
-				setPixel(x + bit, y + row);
-			}
-		}
-	}
+    let mut color = 0;
+    // drawRow$:
+    // ...
+    // sub y, #1
+    // ...
+    // teq y, #0
+    // bne drawRow$
+    for j in 0..self.y
+    {
+        // drawPixel$:
+        // ...
+        // sub x, #1
+        // teq x, #0
+        // bne drawPixel$
+        for i in 0..self.x
+        {
+            // add fbAddr, #2
+            // addr_offset += 2;
+            // strh colour, [fbAddr]
+            // pixel = unsafe {framebuffer.offset(addr_offset) as *mut u32};
+            // *pixel = color;
+            self.draw_pixel(i, j, color);
+        }
+        // add colour, #1
+        color += 1;
+    }
+}
+	
+pub fn draw_pixel(&mut self, x: u32, y: u32, color: u32)
+{
+    let framebuffer = self.gpu_ptr as *const u32;
+    let pixel_offset = (x + (y * self.phy_width)) * self.bit_depth;
+    let pixel = unsafe {framebuffer.offset(pixel_offset as isize) as *mut u32};
+    unsafe {*pixel = color};
+}
+	
+pub fn draw_line(&mut self, mut x0: i32, x1: i32, mut y0: i32, y1: i32, color: u32)
+{
+    let delta_x: i32;
+    let neg_delta_y: i32;
+    let step_x: i32;
+    let step_y: i32;
+    let mut error: i32;
+    if x1 > x0
+    {
+        delta_x = x1 - x0;
+        step_x = 1;
+    } else
+    {
+        delta_x = x1 - x0;
+        step_x = -1;
+    }
+    
+    if y1 > y0
+    {
+        neg_delta_y = -(y1 - y0);
+        step_y = 1;
+    } else
+    {
+        neg_delta_y = -(y1 - y0);
+        step_y = -1;
+    }
+    
+    // Bitshift by one is to simulate multiplication by 2
+    error = 0;
+    while x0 != x1 + step_x || y0 != y1 + step_y
+    {
+        self.draw_pixel(x0 as u32, y0 as u32, color);
+        if (error << 1) > neg_delta_y
+        {
+            x0 += step_x;
+            error += neg_delta_y;
+        } else if (error << 1) < delta_x
+        {
+            y0 += step_y;
+            error += delta_x;
+        }
+    }
 }
 */
 
-// Note for syscall.rs
-// First syscall to implement will be uname so I can print out the name for FeOS/Krust
-// Note if anything does not work:
-// cd assembler
-// git checkout master
-// git stash
-// git pull
-// git stash pop
-// Use code to merge in changes
-
-// Time: 6:30 A.M. to 2:30 P.M. 12/13/2018
+/*
+ * TODO:
+ * https://github.com/raspberrypi/firmware/wiki/Mailbox-property-interface#get-physical-display-widthheight
+ * Implement all the cool codes that are contained within this github wiki page.
+ */
