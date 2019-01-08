@@ -149,3 +149,58 @@ pub unsafe fn uart_writeaddr(mut addr: usize)
     uart_putc('0');
     uart_putc('\n');
 }
+
+/*
+impl fmt::Write for SerialPort {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for byte in s.bytes() {
+            self.send(byte);
+        }
+        Ok(())
+    }
+}
+*/
+
+/*
+ * Pulling from UART 16550 crate for formatting. 
+ * Actually seems like that crate didn't have much real formatting going on...
+ */
+struct UartWriter
+{
+    buffer: &'static str,
+}
+
+/*
+use core::fmt;
+
+impl fmt::Write for UartWriter
+{
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        uart_puts(s);
+        return Ok(());
+    }
+}
+
+#[doc(hidden)]
+pub fn _print(args: ::core::fmt::Arguments) {
+    use core::fmt::Write;
+    let mut uwriter: UartWriter = UartWriter {buffer: ""};
+    uwriter.write_fmt(args);
+}
+
+/// Prints to the host through the serial interface.
+#[macro_export]
+macro_rules! uart_print {
+    ($($arg:tt)*) => {
+        $crate::uart::_print(format_args!($($arg)*));
+    };
+}
+
+/// Prints to the host through the serial interface, appending a newline.
+#[macro_export]
+macro_rules! uart_println {
+    () => ($crate::uart_print!("\n"));
+    ($fmt:expr) => ($crate::uart_print!(concat!($fmt, "\n")));
+    ($fmt:expr, $($arg:tt)*) => ($crate::uart_print!(concat!($fmt, "\n"), $($arg)*));
+}
+*/

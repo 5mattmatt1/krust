@@ -148,13 +148,57 @@ struct FbInitMsg
     
     tag_framebuffer_request: u32,
     tag_fbr_bitwidth: u32,
-    tag_fbr_padding: u32, /* Actually framebuffer pointer */
     tag_fbr_alignment: u32,
-    tag_fbr_padding2: u32, /* Actually framebuffer size */
+    base_ptr: u32, /* Actually framebuffer pointer */
+    ptr_size: u32, /* Actually framebuffer size */
 
     end_tag: u32,
 }
 
+#[repr(C, align(16))]
+struct GetPitchMsg
+{
+    buf_len: u32,
+    response_code: u32,
+
+    tag_getpitch_request: u32,
+    tag_gp_bitwidth: u32,
+    tag_gp_padding: u32,
+    pitch: u32,
+
+    end_tag: u32,
+}
+
+pub fn get_pitch() -> u32
+{
+    let mut get_pitch_msg: GetPitchMsg = GetPitchMsg
+    {
+        buf_len: 28,
+        response_code: 0,
+        
+        tag_getpitch_request: 0x00040008,
+        tag_gp_bitwidth: 4,
+        tag_gp_padding: 4, /* Try changing to 8 */
+        pitch: 0, /* 0 */
+
+        end_tag: 0,
+    };
+
+
+    unsafe 
+    {
+        us_mailbox_send(&get_pitch_msg as *const GetPitchMsg as usize as u32, PROPERTY_CHANNEL);
+
+        // For debugging purposes...
+        debug_rc("Get pitch: ", rctoe(get_pitch_msg.response_code));
+    }
+
+    return get_pitch_msg.pitch;
+}
+
+/*
+ * Dispmanx
+ */
 
 pub fn fb_init()
 {
@@ -198,15 +242,15 @@ pub fn fb_init()
         0,
         0, 0, 0]; */
 
-    let get_fb: FbInitMsg = FbInitMsg {
+    let mut get_fb: FbInitMsg = FbInitMsg {
         buf_len: 32,
         response_code: 0,
         
         tag_framebuffer_request: 0x00040001,
         tag_fbr_bitwidth: 8,
-        tag_fbr_padding: 4, /* 0 */
-        tag_fbr_alignment: 16,
-        tag_fbr_padding2: 0,
+        tag_fbr_alignment: 16, /* Try changing to 8 */
+        base_ptr: 4, /* 0 */
+        ptr_size: 0,
 
         end_tag: 0,
     };
@@ -230,32 +274,19 @@ pub fn fb_init()
         
         us_mailbox_send(&get_fb as *const FbInitMsg as usize as u32, PROPERTY_CHANNEL);
 
+        let pitch = get_pitch();
 
         // let fb_len: u32 = get_fb.tag_fbr_padding2;
-        let fb = get_fb.tag_fbr_padding as *const [u32; 640*480*24];
+        // let fb = get_fb.tag_fbr_padding as *const [u32; 640*480*24];
 
         debug_rc("Framebuffer Init Status: ", 
                 rctoe(get_fb.response_code));
         
-        /*
-        if get_fb.response_code == 0x80000000
-        {
-            uart_puts("FB Success!\n");
-        }
-        */
 
         // debug_rc(release_buffer());
-        render(get_fb.tag_fbr_padding, 0, 0, 640, 480, 24);
-        /*
-        // Size is odd, but we'll see...
-        if (640*480*24) == get_fb.tag_fbr_padding2
-        {
-            uart_puts("Correct size\n");
-        } else
-        {
-            uart_puts("Incorrect size\n");
-        }
-        */
+        get_fb.base_ptr |= 0x40000000;
+        get_fb.base_ptr &=!0xC0000000;
+        render(get_fb.base_ptr, 0, 0, 640, 480, 24, pitch);
     }
 }
 
@@ -307,7 +338,7 @@ struct ReleaseBufMsg
     end_tag: u32,
 }
 
-
+// Need to implement these functions using arrays... 
 fn release_buffer() -> PostmanErrorCodes
 {
     let rb_msg: ReleaseBufMsg = ReleaseBufMsg {
@@ -323,65 +354,84 @@ fn release_buffer() -> PostmanErrorCodes
     return rctoe(rb_msg.response_code);
 }
 
-/*
-#[repr(C, align(16))]
-struct ScreenSizeMsg
+/* Would help get rid of some of the passing of values along
+ * Via functions and would give that nicce abstraction of a struct with implemented functions.
+ */
+struct Framebuffer
 {
-    buf_len: u32,
-    response_code: u32,
-
-    tag_screensize: u32,
-    tag_ss_bitwidth: u32,
-    tag_ss_response: u32,
-    tag_ss_width: u32,
-    tag_ss_height: u32,
-
-    end_tag: u32,
+    addr: u32,
+    x: u32,
+    y: u32,
+    phy_width: u32,
+    phy_height: u32,
+    virt_width: u32,
+    virt_height: u32,
+    bit_depth: u32,
+    pitch: u32,
 }
-*/
+
+pub fn rgb24(r: u8, g: u8, b: u8) -> u32
+{
+    return (b as u32) << 16 | (g as u32) << 8 | r as u32; 
+}
 
 /*
- * Should move to framebuffer.rs eventually
+ * Should move to gl.rs eventually
  */
 pub fn render(addr: u32, 
             x: u32, y: u32, 
             phy_width: u32, phy_height: u32, 
-            bit_depth: u32)
+            mut bit_depth: u32,
+            mut pitch: u32)
 {
-    let mut color = 0;
-    // drawRow$:
-    // ...
-    // sub y, #1
-    // ...
-    // teq y, #0
-    // bne drawRow$
+    /*
+     * TODO:
+     * Pitch should be used instead of phy_width
+     * due to the fact that the gpu won't always allocate
+     * a framebuffer's rows continously.
+     * However, I can't quite get the math working like I need to
+     */
+    // pitch >>= 2;
+    bit_depth >>= 3;
+    let mut r: i32 = 0x80;
+    let mut g: i32 = 0x0;
+    let mut b: i32 = 0x0;
+    let mut r_step: i32 = 1;
+    let mut g_step: i32 = 1;
+    let mut color = rgb24(r as u8, g as u8, b as u8);
     for j in y..phy_height
     {
-        // drawPixel$:
-        // ...
-        // sub x, #1
-        // teq x, #0
-        // bne drawPixel$
+        // 320 is our magic number...
         for i in x..phy_width
         {
-            // add fbAddr, #2
-            // addr_offset += 2;
-            // strh colour, [fbAddr]
-            // pixel = unsafe {framebuffer.offset(addr_offset) as *mut u32};
-            // *pixel = color;
-            draw_pixel(addr, i, j, phy_width, bit_depth, color);
+            unsafe 
+            {
+                draw_pixel(addr, i, j, phy_width, bit_depth, color);
+            }
+            if (r + 1) == 256
+            {
+                r_step = -r_step;
+            } else
+            {
+                r += r_step;
+            }
+            color = rgb24(r as u8, g as u8, b as u8);
         }
-        // add colour, #1
-        color += 54;
+        if (g + g_step) == 256 || (g + g_step) == 0
+        {
+            g_step = -g_step;
+        } else
+        {
+            g += g_step;
+        }
     }
 }
 
-pub fn draw_pixel(addr: u32, x: u32, y: u32, phy_width: u32, bit_depth: u32, color: u32)
+pub unsafe fn draw_pixel(addr: u32, x: u32, y: u32, pitch: u32, bit_depth: u32, color: u32)
 {
-    let framebuffer = addr as *const u32;
-    let pixel_offset = (x + (y * phy_width)) * bit_depth * 4;
-    let pixel = unsafe {framebuffer.offset(pixel_offset as isize) as *mut u32};
-    unsafe {*pixel = color};
+    let pixel_offset = (x + (y * pitch)) * bit_depth;
+    let pixel = (addr + pixel_offset) as *mut u32;
+    *pixel = color;
 }
 
 

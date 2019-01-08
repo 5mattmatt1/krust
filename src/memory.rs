@@ -31,7 +31,7 @@ pub unsafe fn mem_v2p(vaddr: usize) -> usize
         /* (Super)Selection */
         paddr = pt_data & 0xFFF00000;
 
-        if (pt_data & (1 << 18)) == 1
+        if (pt_data & (1 << 18)) != 0
         {
             /* 16 MB Supersection */
             paddr += vaddr & 0x00FFFFFF;
@@ -51,7 +51,7 @@ pub unsafe fn mem_v2p(vaddr: usize) -> usize
         return 0xFFFFFFFF;
     }
 
-    if (cpt_data & 2) == 1
+    if (cpt_data & 2) != 0
     {
         /* Small (4k) page */
         return (cpt_data & 0xFFFFF000) + (vaddr & 0xFFF);
