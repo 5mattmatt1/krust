@@ -1,1 +1,12 @@
+csud/
+linux-ref/
 target/
+unused/
+*.img
+*.elf
+*.list
+*.bin
+*.o
+*.py
+*.png
+*.log

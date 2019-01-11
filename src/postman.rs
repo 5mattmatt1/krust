@@ -286,7 +286,11 @@ pub fn fb_init()
         // debug_rc(release_buffer());
         get_fb.base_ptr |= 0x40000000;
         get_fb.base_ptr &=!0xC0000000;
-        render(get_fb.base_ptr, 0, 0, 640, 480, 24, pitch);
+        // test_gradient_render(get_fb.base_ptr, 0, 0, 640, 480, 24, pitch);
+        use crate::font::draw_font;
+        use crate::font0::FONT0;
+        // let fontAddr = &FONT0[0] as *const u8 as usize;
+        draw_font(FONT0, get_fb.base_ptr, 128, 96, 8, 16, 3);
     }
 }
 
@@ -375,10 +379,12 @@ pub fn rgb24(r: u8, g: u8, b: u8) -> u32
     return (b as u32) << 16 | (g as u32) << 8 | r as u32; 
 }
 
+
+
 /*
- * Should move to gl.rs eventually
+ * Should move to test_gl.rs eventually
  */
-pub fn render(addr: u32, 
+pub fn test_gradient_render(addr: u32, 
             x: u32, y: u32, 
             phy_width: u32, phy_height: u32, 
             mut bit_depth: u32,

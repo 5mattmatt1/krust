@@ -7,6 +7,8 @@ pub mod gpio;
 pub mod uart;
 pub mod vol;
 pub mod memory;
+pub mod font;
+pub mod font0;
 
 const RPI_VECTOR_START: u32 = 0x0;
 
