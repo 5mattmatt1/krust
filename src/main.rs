@@ -106,8 +106,6 @@ pub unsafe extern fn _Unwind_Resume() {}
 #[no_mangle]
 // pub extern "C" fn _start() {
 pub extern "C" fn main() {
-    // test_uart();
-    // test_led();
     use crate::gpio::enable_led;
     use crate::gpio::turn_on_led;
     use crate::uart::{uart_setup};

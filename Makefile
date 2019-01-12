@@ -20,7 +20,7 @@ krust.list: krust.img
 
 # src/interrupts_asm.s
 krust.elf: src/start.o src/main.o
-	arm-none-eabi-gcc -O0 -g -Wl,-gc-sections -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s -nostdlib $^ -o $@
+	arm-none-eabi-gcc -T krust.ld -O0 -g -Wl,-gc-sections -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s -nostdlib $^ -o $@
 
 %.o: %.rs $(SOURCES)
 	rustc --target arm-unknown-linux-gnueabihf -g --crate-type="staticlib" $< -o $@

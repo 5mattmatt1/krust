@@ -286,11 +286,18 @@ pub fn fb_init()
         // debug_rc(release_buffer());
         get_fb.base_ptr |= 0x40000000;
         get_fb.base_ptr &=!0xC0000000;
-        // test_gradient_render(get_fb.base_ptr, 0, 0, 640, 480, 24, pitch);
-        use crate::font::draw_font;
-        use crate::font0::FONT0;
+        test_gradient_render(get_fb.base_ptr, 0, 0, 640, 480, 24, pitch);
+        // use crate::font::{draw_font, draw_char, draw_string};
+        // use crate::font0::FONT0;
         // let fontAddr = &FONT0[0] as *const u8 as usize;
-        draw_font(FONT0, get_fb.base_ptr, 128, 96, 8, 16, 3);
+        // draw_font(FONT0, get_fb.base_ptr, 128, 96, 8, 16, 3);
+        // draw_char(FONT0, get_fb.base_ptr, 'H', 0, 0, 128, 96, 8, 16, 3);
+        // draw_char(FONT0, get_fb.base_ptr, 'e', 8, 0, 128, 96, 8, 16, 3);
+        // draw_char(FONT0, get_fb.base_ptr, 'l', 16, 0, 128, 96, 8, 16, 3);
+        // draw_char(FONT0, get_fb.base_ptr, 'l', 24, 0, 128, 96, 8, 16, 3);
+        // draw_char(FONT0, get_fb.base_ptr, 'o', 32, 0, 128, 96, 8, 16, 3);
+        // draw_char(FONT0, get_fb.base_ptr, '!', 40, 0, 128, 96, 8, 16, 3);
+        // draw_string(FONT0, get_fb.base_ptr, "Hello World!", 0, 0, 128, 96, 8, 16, 3);
     }
 }
 
