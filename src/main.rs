@@ -19,8 +19,8 @@ fn test_gpu()
     // let mut fb_info = FrameBufferInfo::new(640, 480, 24);
     // fb_info.render();
     // Newer raspberry pi 2
-    use crate::postman::fb_init;
-    fb_init();
+    use crate::postman::fb_initb;
+    fb_initb();
 }
 
 /*
@@ -106,11 +106,12 @@ pub unsafe extern fn _Unwind_Resume() {}
 #[no_mangle]
 // pub extern "C" fn _start() {
 pub extern "C" fn main() {
-    use crate::gpio::enable_led;
-    use crate::gpio::turn_on_led;
+    use crate::gpio::{enable_led, turn_on_led, output_gpio, setup_gpio};
     use crate::uart::{uart_setup};
     enable_led();
     turn_on_led();
+    setup_gpio(18, crate::gpio::OUTPUT, crate::gpio::PUD_OFF);
+    output_gpio(18, true); // Testing red LED
     /*
      * Add this to the list of research links on GitHub:
      * https://github.com/bztsrc/raspi3-tutorial.

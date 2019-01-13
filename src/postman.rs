@@ -199,6 +199,130 @@ pub fn get_pitch() -> u32
 /*
  * Dispmanx
  */
+#[repr(C, align(16))]
+struct GPUMsg
+{
+    mailbuffer: [u32; 256],
+}
+
+pub fn fb_initb()
+{
+    /* https://github.com/brianwiddas/pi-baremetal/blob/master/framebuffer.c */
+    let mut mail: GPUMsg = GPUMsg {mailbuffer: [0; 256]};
+    let mut mailbuffer: [u32; 256] = [0; 256];
+
+    /* Get the display size */
+    mail.mailbuffer[0] = 32; // Total size
+    mail.mailbuffer[1] = 0; // Request
+    mail.mailbuffer[2] = 0x40003; // Display size
+    mail.mailbuffer[3] = 8; // Buffer size
+    mail.mailbuffer[4] = 0; // Request size
+    mail.mailbuffer[5] = 0; // Space for horz resolution
+    mail.mailbuffer[6] = 0; // Space for vertical resolution
+    mail.mailbuffer[7] = 0; // End tag
+
+    unsafe
+    {
+        us_mailbox_send(&mail.mailbuffer[0] as *const u32 as usize as u32,
+                        PROPERTY_CHANNEL);
+
+        // us_mailbox_read(8);
+
+        debug_rc("Get display size: ", 
+                    rctoe(mail.mailbuffer[1]));
+    }
+
+    let mut fb_x: u32 = mail.mailbuffer[5];
+    let mut fb_y: u32 = mail.mailbuffer[6];
+    
+    use crate::uart::{uart_puts, uart_putc, uart_writeaddr};
+
+    /* If both fb_x and fb_y are both zero, assume we're running on the
+	 * qemu Raspberry Pi emulation (which doesn't return a screen size
+	 * at this point), and request a 640x480 screen
+	 */
+    if (fb_x == 0 && fb_y == 0)
+    {
+        uart_puts("In QEMU\n");
+        fb_x = 640;
+        fb_y = 480;
+    } 
+    if (fb_x == 640 && fb_y == 480)
+    {
+        uart_puts("Probs in QEMU\n");
+    }
+
+	mail.mailbuffer[0] = 84;		// Buffer size
+    mail.mailbuffer[1] = 0; // Request
+    mail.mailbuffer[2] = 0x00048003; // Tag id (set physical size)
+    mail.mailbuffer[3] = 8;  // Value buffer size (bytes)
+    mail.mailbuffer[4] = 8;  // Req. + value length (bytes)
+    mail.mailbuffer[5] = fb_x;   // Horz resolution
+    mail.mailbuffer[6] = fb_y;   // Vert resolution
+
+    mail.mailbuffer[7] = 0x00048004; // Tag id (set virtual size)
+    mail.mailbuffer[8] = 8;		// Value buffer size (bytes)
+	mail.mailbuffer[9] = 8;		// Req. + value length (bytes)
+	mail.mailbuffer[10] = fb_x;		// Horizontal resolution
+	mail.mailbuffer[11] = fb_y;		// Vertical resolution
+
+	mail.mailbuffer[12] = 0x00048005;	// Tag id (set depth)
+	mail.mailbuffer[13] = 4;		// Value buffer size (bytes)
+	mail.mailbuffer[14] = 4;		// Req. + value length (bytes)
+	mail.mailbuffer[15] = 24;		// 16 bpp
+
+	mail.mailbuffer[16] = 0x00040001;	// Tag id (allocate framebuffer)
+	mail.mailbuffer[17] = 8;		// Value buffer size (bytes)
+	mail.mailbuffer[18] = 16;		// Req. + value length (bytes)
+	mail.mailbuffer[19] = 0;	// Alignment = 16
+	mail.mailbuffer[20] = 0;		// Space for response
+    // tag_fbr_bitwidth: 8,
+    // tag_fbr_alignment: 16, /* Try changing to 8 */
+    // base_ptr: 0, /* 0 */
+    // ptr_size: 0,
+
+	mail.mailbuffer[21] = 0;		// Terminating tag
+
+    unsafe
+    {
+        us_mailbox_send(&mail.mailbuffer[0] as *const u32 as usize as u32,
+                        PROPERTY_CHANNEL);
+        // us_mailbox_read(8);
+
+        debug_rc("Setup framebuffer: ", 
+                    rctoe(mail.mailbuffer[1]));
+    }
+
+
+    let mut fb_ptr: u32 = mail.mailbuffer[19];
+
+    /* Get the framebuffer pitch (bytes per line) */
+	mail.mailbuffer[0] = 21;		// Total size
+	mail.mailbuffer[1] = 0;		// Request
+	mail.mailbuffer[2] = 0x40008;	// Display size
+	mail.mailbuffer[3] = 4;		// Buffer size
+	mail.mailbuffer[4] = 0;		// Request size
+	mail.mailbuffer[5] = 0;		// Space for pitch
+    mail.mailbuffer[6] = 0;     // End tag
+
+    unsafe
+    {
+        us_mailbox_send(&mail.mailbuffer[0] as *const u32 as usize as u32,
+                        PROPERTY_CHANNEL);
+        // us_mailbox_read(8);
+
+        debug_rc("Get pitch: ", 
+                    rctoe(mail.mailbuffer[1]));
+    }
+
+    let pitch: u32 = mail.mailbuffer[5];
+
+    // These aren't used by brianwiddas so maybe they are killing it...
+    // fb_ptr |= 0x40000000;
+    // fb_ptr &=!0xC0000000;
+    test_gradient_render(fb_ptr, 0, 0, 640, 480, 24, pitch);
+
+}
 
 pub fn fb_init()
 {
@@ -216,7 +340,7 @@ pub fn fb_init()
         
         tag_screensize: 0x00048003, 
         tag_ss_bitwidth: 8, 
-        tag_ss_padding: 0, 
+        tag_ss_padding: 8, 
         tag_ss_width: 640, 
         tag_ss_height: 480,
         
@@ -233,14 +357,6 @@ pub fn fb_init()
         
         end_tag: 0,
     };
-    /* [u32; 20] = 
-        [80, 
-        0, 
-        0x00048003, 8, 0, 640, 480,
-        0x00048004, 8, 0, 640, 480,
-        0x00048005, 4, 0, 24,
-        0,
-        0, 0, 0]; */
 
     let mut get_fb: FbInitMsg = FbInitMsg {
         buf_len: 32,
@@ -249,19 +365,12 @@ pub fn fb_init()
         tag_framebuffer_request: 0x00040001,
         tag_fbr_bitwidth: 8,
         tag_fbr_alignment: 16, /* Try changing to 8 */
-        base_ptr: 4, /* 0 */
+        base_ptr: 0, /* 0 */
         ptr_size: 0,
 
         end_tag: 0,
     };
-    
-    /*
-        [u32; 8] = 
-        [32,
-        0,
-        0x00040001, 8, 0, 16, 0,
-        0];
-    */
+
     use crate::uart::{uart_puts, uart_putc, uart_writeaddr};
     use crate::memory::{mem_v2p};
 
@@ -301,70 +410,6 @@ pub fn fb_init()
     }
 }
 
-#[repr(C, align(16))]
-struct BlankScreenMsg
-{
-    buf_len: u32,
-    response_code: u32,
-
-    tag_on: u32,
-    tag_on_bitwidth: u32,
-    tag_on_response: u32,
-    tag_on_state: u32,
-
-    end_tag: u32,
-}
-
-pub fn set_blank_screen(on: u32) -> bool
-{
-    let bls_msg: BlankScreenMsg = BlankScreenMsg {
-        buf_len: 28,
-        response_code: 0,
-        
-        tag_on: 0x00040002,
-        tag_on_bitwidth: 4,
-        tag_on_response: 0,
-        tag_on_state: on,
-        
-        end_tag: 0,
-    };
-    
-    unsafe 
-    {
-        us_mailbox_send(&bls_msg as *const BlankScreenMsg as usize as u32, PROPERTY_CHANNEL);
-    }
-
-    return bls_msg.response_code == RESPONSE_SUCCESS;
-}
-
-#[repr(C, align(16))]
-struct ReleaseBufMsg
-{
-    buf_len: u32,
-    response_code: u32,
-
-    tag_release_buffer: u32, /* 0x00048001 */
-    tag_rb_bitwidth: u32,
-
-    end_tag: u32,
-}
-
-// Need to implement these functions using arrays... 
-fn release_buffer() -> PostmanErrorCodes
-{
-    let rb_msg: ReleaseBufMsg = ReleaseBufMsg {
-        buf_len: 20,
-        response_code: 0,
-
-        tag_release_buffer: 0x00048001,
-        tag_rb_bitwidth: 0,
-
-        end_tag: 0,
-    };
-
-    return rctoe(rb_msg.response_code);
-}
-
 /* Would help get rid of some of the passing of values along
  * Via functions and would give that nicce abstraction of a struct with implemented functions.
  */
@@ -386,8 +431,6 @@ pub fn rgb24(r: u8, g: u8, b: u8) -> u32
     return (b as u32) << 16 | (g as u32) << 8 | r as u32; 
 }
 
-
-
 /*
  * Should move to test_gl.rs eventually
  */
@@ -404,7 +447,7 @@ pub fn test_gradient_render(addr: u32,
      * a framebuffer's rows continously.
      * However, I can't quite get the math working like I need to
      */
-    // pitch >>= 2;
+    pitch >>= 2;
     bit_depth >>= 3;
     let mut r: i32 = 0x80;
     let mut g: i32 = 0x0;
@@ -419,7 +462,7 @@ pub fn test_gradient_render(addr: u32,
         {
             unsafe 
             {
-                draw_pixel(addr, i, j, phy_width, bit_depth, color);
+                draw_pixel(addr, i, j, pitch, bit_depth, color);
             }
             if (r + 1) == 256
             {
@@ -442,7 +485,7 @@ pub fn test_gradient_render(addr: u32,
 
 pub unsafe fn draw_pixel(addr: u32, x: u32, y: u32, pitch: u32, bit_depth: u32, color: u32)
 {
-    let pixel_offset = (x + (y * pitch)) * bit_depth;
+    let pixel_offset: u32 = (x + (y * pitch)) * bit_depth;
     let pixel = (addr + pixel_offset) as *mut u32;
     *pixel = color;
 }
