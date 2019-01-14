@@ -111,8 +111,8 @@ pub extern "C" fn main() {
     enable_led();
     turn_on_led();
     // Test gpio later...
-    // setup_gpio(18, crate::gpio::OUTPUT, crate::gpio::PUD_OFF);
-    // output_gpio(18, true); // Testing red LED
+    setup_gpio(18, 1, crate::gpio::OUTPUT, crate::gpio::PUD_OFF);
+    output_gpio(18, true); // Testing red LED
     /*
      * Add this to the list of research links on GitHub:
      * https://github.com/bztsrc/raspi3-tutorial.

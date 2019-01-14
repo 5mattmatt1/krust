@@ -275,8 +275,8 @@ pub fn fb_initb()
 
 	mail.mailbuffer[16] = 0x00040001;	// Tag id (allocate framebuffer)
 	mail.mailbuffer[17] = 8;		// Value buffer size (bytes)
-	mail.mailbuffer[18] = 16;		// Req. + value length (bytes)
-	mail.mailbuffer[19] = 0;	// Alignment = 16
+	mail.mailbuffer[18] = 4;		// Req. + value length (bytes)
+	mail.mailbuffer[19] = 16;	// Alignment = 16
 	mail.mailbuffer[20] = 0;		// Space for response
     // tag_fbr_bitwidth: 8,
     // tag_fbr_alignment: 16, /* Try changing to 8 */

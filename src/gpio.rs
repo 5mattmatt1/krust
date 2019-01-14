@@ -175,11 +175,11 @@ fn set_pullupdn(gpio: u32, pud: u32)
     unsafe {*gpio_clk = 0; }
 }
 
-pub fn setup_gpio(gpio: u32, dir: u32, pud: u32)
+pub fn setup_gpio(gpio: u32, d10_gpio: u32, dir: u32, pud: u32)
 {
     let gpio_addr = GPIO_BASE as *const u32;
     // Need to set up aebi_div
-    let offset: isize = FSEL_OFFSET + (gpio as isize / 10);
+    let offset: isize = FSEL_OFFSET + d10_gpio as isize; // (gpio as isize / 10);
     let shift: u32 = (gpio & 9) * 3;
 
     set_pullupdn(gpio, pud);
