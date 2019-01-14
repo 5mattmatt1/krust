@@ -60,6 +60,7 @@ unsafe fn us_mailbox_read(channel: u8) -> u32
 
 unsafe fn us_mailbox_send(mail: u32, channel: u8)
 {
+    /*
     let mut status: u32;
     loop
     {
@@ -69,8 +70,9 @@ unsafe fn us_mailbox_send(mail: u32, channel: u8)
             break;
         }
     }
+    */
 
-    write32(MAILBOX_WRITE, mail | channel as u32);
+    write32(MAILBOX_WRITE | channel as u32, mail | channel as u32);
 }
 
 fn rctoe(rc: u32) -> PostmanErrorCodes
@@ -216,7 +218,7 @@ pub fn fb_initb()
     mail.mailbuffer[1] = 0; // Request
     mail.mailbuffer[2] = 0x40003; // Display size
     mail.mailbuffer[3] = 8; // Buffer size
-    mail.mailbuffer[4] = 0; // Request size
+    mail.mailbuffer[4] = 8; // Request size
     mail.mailbuffer[5] = 0; // Space for horz resolution
     mail.mailbuffer[6] = 0; // Space for vertical resolution
     mail.mailbuffer[7] = 0; // End tag
@@ -301,7 +303,7 @@ pub fn fb_initb()
 	mail.mailbuffer[1] = 0;		// Request
 	mail.mailbuffer[2] = 0x40008;	// Display size
 	mail.mailbuffer[3] = 4;		// Buffer size
-	mail.mailbuffer[4] = 0;		// Request size
+	mail.mailbuffer[4] = 4;		// Request size
 	mail.mailbuffer[5] = 0;		// Space for pitch
     mail.mailbuffer[6] = 0;     // End tag
 
@@ -320,8 +322,15 @@ pub fn fb_initb()
     // These aren't used by brianwiddas so maybe they are killing it...
     // fb_ptr |= 0x40000000;
     // fb_ptr &=!0xC0000000;
-    test_gradient_render(fb_ptr, 0, 0, 640, 480, 24, pitch);
-
+    fb_ptr &= 0x3FFFFFFF;
+    // test_gradient_render(fb_ptr, 0, 0, fb_x, fb_y, 24, fb_x);
+    use crate::font0::FONT0;
+    use crate::font::draw_string;
+    
+    unsafe
+    {
+        draw_string(FONT0, fb_ptr, fb_x, "Hello World!", 0, 0, 128, 96, 8, 16, 3);
+    }
 }
 
 pub fn fb_init()
@@ -447,7 +456,7 @@ pub fn test_gradient_render(addr: u32,
      * a framebuffer's rows continously.
      * However, I can't quite get the math working like I need to
      */
-    pitch >>= 2;
+    // pitch >>= 2;
     bit_depth >>= 3;
     let mut r: i32 = 0x80;
     let mut g: i32 = 0x0;

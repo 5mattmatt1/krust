@@ -24,7 +24,7 @@ krust.elf: src/start.o src/main.o
 
 # opt-level=s Makes some statuses fail...
 %.o: %.rs $(SOURCES)
-	rustc --target arm-unknown-linux-gnueabihf -g --crate-type="staticlib" -C lto=thin -C opt-level=1 $< -o $@
+	rustc --target arm-unknown-linux-gnueabihf -g --crate-type="staticlib" -C lto=fat -C opt-level=0 $< -o $@
 
 %.o: %.s
 	arm-none-eabi-as $< -o $@

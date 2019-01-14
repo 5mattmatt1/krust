@@ -110,8 +110,9 @@ pub extern "C" fn main() {
     use crate::uart::{uart_setup};
     enable_led();
     turn_on_led();
-    setup_gpio(18, crate::gpio::OUTPUT, crate::gpio::PUD_OFF);
-    output_gpio(18, true); // Testing red LED
+    // Test gpio later...
+    // setup_gpio(18, crate::gpio::OUTPUT, crate::gpio::PUD_OFF);
+    // output_gpio(18, true); // Testing red LED
     /*
      * Add this to the list of research links on GitHub:
      * https://github.com/bztsrc/raspi3-tutorial.

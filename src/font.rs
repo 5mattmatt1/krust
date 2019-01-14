@@ -15,7 +15,7 @@ fn dcnds_char(ichr: u8) -> [u8; 8]
 }
 
 pub unsafe fn draw_string(rfont_data: [u8; 1536], 
-                        fb: u32, s: &str, 
+                        fb: u32, fb_width: u32, s: &str, 
                         ox: u8, oy: u8, 
                         iw: u8, ih: u8, 
                         cw: u8, ch: u8, 
@@ -24,13 +24,13 @@ pub unsafe fn draw_string(rfont_data: [u8; 1536],
     let mut oxi = ox;
     for byte in s.as_bytes()
     {
-        draw_char(rfont_data, fb, *byte as char, 
+        draw_char(rfont_data, fb, fb_width, *byte as char, 
                     oxi, oy, iw, ih, cw, ch, cwbs);
         oxi += cw;
     }
 }
 
-pub unsafe fn draw_char(rfont_data: [u8; 1536], fb: u32, chr: char, ox: u8, oy: u8, iw: u8, ih: u8, cw: u8, ch: u8, cwbs: u8)
+pub unsafe fn draw_char(rfont_data: [u8; 1536], fb: u32, fb_width: u32, chr: char, ox: u8, oy: u8, iw: u8, ih: u8, cw: u8, ch: u8, cwbs: u8)
 {
     let x = ((chr as u8 - 0x20) & 15) << 3;
     let y = ((chr as u8 - 0x20) >> 4) << 4;
@@ -51,13 +51,13 @@ pub unsafe fn draw_char(rfont_data: [u8; 1536], fb: u32, chr: char, ox: u8, oy: 
                 /* White */
                 draw_pixel(fb, (ox as usize + px as usize) as u32, 
                                 (oy as usize + row as usize) as u32, 
-                                640, 3, 0x0);
+                                fb_width, 3, 0x0);
             } else 
             {
                 /* Black */
                 draw_pixel(fb, (ox as usize + px as usize) as u32, 
                                 (oy as usize + row as usize) as u32, 
-                                640, 3, 0xFFFFFF);
+                                fb_width, 3, 0xFFFFFF);
             }
         }
     }
@@ -74,7 +74,7 @@ pub unsafe fn draw_char(rfont_data: [u8; 1536], fb: u32, chr: char, ox: u8, oy: 
  */
 // TODO: Make this generic
 // In the meantime use fonts from baking pi that are 128x96
-pub unsafe fn draw_font(rfont_data: [u8; 1536], fb: u32, iw: u8, ih: u8, cw: u8, ch: u8, cwbs: u8)
+pub unsafe fn draw_font(rfont_data: [u8; 1536], fb: u32, iw: u8, ih: u8, cw: u8, ch: u8, cwbs: u8, fb_width: u32)
 {
     // Get ahold of some sweet generic arrays
     let mut offset: usize = 0;
@@ -100,13 +100,13 @@ pub unsafe fn draw_font(rfont_data: [u8; 1536], fb: u32, iw: u8, ih: u8, cw: u8,
                         /* White */
                         draw_pixel(fb, (x as usize + px as usize) as u32, 
                                         (y as usize + row as usize) as u32, 
-                                        640, 3, 0xFFFFFF);
+                                        fb_width, 3, 0xFFFFFF);
                     } else 
                     {
                         /* Black */
                         draw_pixel(fb, (x as usize + px as usize) as u32, 
                                         (y as usize + row as usize) as u32, 
-                                        640, 3, 0x0);
+                                        fb_width, 3, 0x0);
                     }
                 }
                 cI += 8;
