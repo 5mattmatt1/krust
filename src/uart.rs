@@ -114,22 +114,36 @@ pub fn modulo(den: usize, nom: usize) -> usize
 }
 */
 
-pub unsafe fn uart_writeaddr(mut addr: usize)
+pub unsafe fn uart_writeaddr(mut addr: usize) -> i8
 {
     // Sadly, this prints in reverse
-    // Maximum u32 in hex: 7FFF,FFFF
+    // Maximum u32 in hex: 0xFFFF_FFFF
     // addr = reverseBits(addr as u32) as usize;
     let mut delta: usize;
     let mut drepr: usize;
+    let mut modulo: usize;
+    let pow_ref: [usize; 9] = [0x0, 0xF, 0xFF, 0xFFF, 0xFFFF, 0xFFFFF, 0xFFFFFF, 0xFFFFFFF, 0xFFFFFFFF];
+
+    let mut msg_arry: [u8; 8] = [0; 8];
     for i in 1..9
     {
         // a % b == a & (b - 1)
         // Where b % 2 == 0
-        delta = addr & ((16_usize.pow(i)) - 1);
+        delta = addr & pow_ref[i as usize];
+        // uart_putc('c');
         addr -= delta;
+        // uart_putc('d');
         drepr = delta >> ((i-1) << 2);
         // a << 2 == a * 4, 
         // but bitshift method is faster
+        msg_arry[8-i] = drepr as u8;
+    }
+
+    uart_putc('0');
+    uart_putc('x');
+    for i in 0..8
+    {
+        drepr = msg_arry[i] as usize;
         if drepr >= 10 && drepr < 16
         {
             // 0x37 + 0xA == 'A'
@@ -143,11 +157,13 @@ pub unsafe fn uart_writeaddr(mut addr: usize)
             // 0x30 + 0x1 == '1'
             // etc.
             uart_putc((0x30 + drepr) as u8 as char);
+        } else
+        {
+            uart_putc('d');
         }
     }
-    uart_putc('x');
-    uart_putc('0');
     uart_putc('\n');
+    return 0;
 }
 
 /*

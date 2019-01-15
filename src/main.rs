@@ -107,18 +107,19 @@ pub unsafe extern fn _Unwind_Resume() {}
 // pub extern "C" fn _start() {
 pub extern "C" fn main() {
     use crate::gpio::{enable_led, turn_on_led, output_gpio, setup_gpio};
-    use crate::uart::{uart_setup};
+    use crate::uart::{uart_setup, uart_puts};
     enable_led();
     turn_on_led();
     // Test gpio later...
-    setup_gpio(18, 1, crate::gpio::OUTPUT, crate::gpio::PUD_OFF);
-    output_gpio(18, true); // Testing red LED
+    // setup_gpio(18, 1, crate::gpio::OUTPUT, crate::gpio::PUD_OFF);
+    // output_gpio(18, true); // Testing red LED
     /*
      * Add this to the list of research links on GitHub:
      * https://github.com/bztsrc/raspi3-tutorial.
      */
     unsafe {
         uart_setup();
+        uart_puts("UART Init!\n");
         test_gpu();
         loop
         {

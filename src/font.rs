@@ -48,16 +48,16 @@ pub unsafe fn draw_char(rfont_data: [u8; 1536], fb: u32, fb_width: u32, chr: cha
         {
             if ichr_set[px] == 1
             {
-                /* White */
-                draw_pixel(fb, (ox as usize + px as usize) as u32, 
-                                (oy as usize + row as usize) as u32, 
-                                fb_width, 3, 0x0);
-            } else 
-            {
                 /* Black */
                 draw_pixel(fb, (ox as usize + px as usize) as u32, 
                                 (oy as usize + row as usize) as u32, 
-                                fb_width, 3, 0xFFFFFF);
+                                fb_width, 4, 0x0);
+            } else 
+            {
+                /* Yellow */
+                draw_pixel(fb, (ox as usize + px as usize) as u32, 
+                                (oy as usize + row as usize) as u32, 
+                                fb_width, 4, 0xFF44FFFF);
             }
         }
     }

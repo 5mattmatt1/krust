@@ -211,7 +211,8 @@ pub fn fb_initb()
 {
     /* https://github.com/brianwiddas/pi-baremetal/blob/master/framebuffer.c */
     let mut mail: GPUMsg = GPUMsg {mailbuffer: [0; 256]};
-    let mut mailbuffer: [u32; 256] = [0; 256];
+    let mail_ptr: usize = (&mail as *const GPUMsg as usize) | 0xC000_0000; 
+    // let mut mailbuffer: [u32; 256] = [0; 256];
 
     /* Get the display size */
     mail.mailbuffer[0] = 32; // Total size
@@ -225,7 +226,9 @@ pub fn fb_initb()
 
     unsafe
     {
-        us_mailbox_send(&mail.mailbuffer[0] as *const u32 as usize as u32,
+        uart_puts("&mail[0]: ");
+        uart_writeaddr(mail_ptr);
+        us_mailbox_send(mail_ptr as *const u32 as usize as u32,
                         PROPERTY_CHANNEL);
 
         // us_mailbox_read(8);
@@ -271,7 +274,7 @@ pub fn fb_initb()
 	mail.mailbuffer[12] = 0x00048005;	// Tag id (set depth)
 	mail.mailbuffer[13] = 4;		// Value buffer size (bytes)
 	mail.mailbuffer[14] = 4;		// Req. + value length (bytes)
-	mail.mailbuffer[15] = 24;		// 16 bpp
+	mail.mailbuffer[15] = 32;		// 32 bpp
 
 	mail.mailbuffer[16] = 0x00040001;	// Tag id (allocate framebuffer)
 	mail.mailbuffer[17] = 8;		// Value buffer size (bytes)
@@ -287,7 +290,7 @@ pub fn fb_initb()
 
     unsafe
     {
-        us_mailbox_send(&mail.mailbuffer[0] as *const u32 as usize as u32,
+        us_mailbox_send(mail_ptr as u32,
                         PROPERTY_CHANNEL);
         // us_mailbox_read(8);
 
@@ -309,7 +312,7 @@ pub fn fb_initb()
 
     unsafe
     {
-        us_mailbox_send(&mail.mailbuffer[0] as *const u32 as usize as u32,
+        us_mailbox_send(mail_ptr as u32,
                         PROPERTY_CHANNEL);
         // us_mailbox_read(8);
 
@@ -320,9 +323,24 @@ pub fn fb_initb()
     let pitch: u32 = mail.mailbuffer[5];
 
     // These aren't used by brianwiddas so maybe they are killing it...
+    unsafe
+    {
+        uart_writeaddr(fb_ptr as usize);
+    }
+    fb_ptr &= 0x3FFFFFFF;
+    // Notes:
+    // OR'ing fb_ptr by 0x4000_0000 is something
+    // From an old RPi 1 tutorial that I must not
+    // have factored out when I made the switch from
+    // channel 1 to channel 8.
+    // Also OR'ing mail_ptr by 0xC000_0000 is to
+    // Account for older models of the RPi 2.
     // fb_ptr |= 0x40000000;
     // fb_ptr &=!0xC0000000;
-    fb_ptr &= 0x3FFFFFFF;
+    unsafe
+    {
+        uart_writeaddr(fb_ptr as usize);
+    }
     // test_gradient_render(fb_ptr, 0, 0, fb_x, fb_y, 24, fb_x);
     use crate::font0::FONT0;
     use crate::font::draw_string;
