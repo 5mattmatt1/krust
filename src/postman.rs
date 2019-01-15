@@ -60,7 +60,6 @@ unsafe fn us_mailbox_read(channel: u8) -> u32
 
 unsafe fn us_mailbox_send(mail: u32, channel: u8)
 {
-    /*
     let mut status: u32;
     loop
     {
@@ -70,7 +69,6 @@ unsafe fn us_mailbox_send(mail: u32, channel: u8)
             break;
         }
     }
-    */
 
     write32(MAILBOX_WRITE | channel as u32, mail | channel as u32);
 }
@@ -107,95 +105,6 @@ unsafe fn debug_rc(debugMsg: &str, rc: PostmanErrorCodes)
     {
         uart_puts("Unknown error code.\n");
     }
-}
-
-#[repr(C, align(16))]
-struct FbDescMsg
-{
-    buf_len: u32,
-    response_code: u32,
-    
-    tag_screensize: u32,
-    tag_ss_bitwidth: u32,
-    tag_ss_padding: u32,
-    tag_ss_width: u32,
-    tag_ss_height: u32,
-
-    tag_vscreensize: u32,
-    tag_vss_bitwidth: u32,
-    tag_vss_padding: u32,
-    tag_vss_width: u32,
-    tag_vss_height: u32,
-
-    tag_bitdepth: u32,
-    tag_bd_bitwidth: u32,
-    tag_bd_padding: u32,
-    tag_bd_bitdepth: u32,
-
-    end_tag: u32, 
-}
-
-/* 
- * Could I template this with different sized arrays?
- * Possibly, but Rust is odd when it comes to arrays with size determined
- * at runtime, and I don't know if a heapless vector would have the same
- * format...
- * Should look into generic array crate. to at least have templates work.
- */
-#[repr(C, align(16))]
-struct FbInitMsg
-{
-    buf_len: u32,
-    response_code: u32,
-    
-    tag_framebuffer_request: u32,
-    tag_fbr_bitwidth: u32,
-    tag_fbr_alignment: u32,
-    base_ptr: u32, /* Actually framebuffer pointer */
-    ptr_size: u32, /* Actually framebuffer size */
-
-    end_tag: u32,
-}
-
-#[repr(C, align(16))]
-struct GetPitchMsg
-{
-    buf_len: u32,
-    response_code: u32,
-
-    tag_getpitch_request: u32,
-    tag_gp_bitwidth: u32,
-    tag_gp_padding: u32,
-    pitch: u32,
-
-    end_tag: u32,
-}
-
-pub fn get_pitch() -> u32
-{
-    let mut get_pitch_msg: GetPitchMsg = GetPitchMsg
-    {
-        buf_len: 28,
-        response_code: 0,
-        
-        tag_getpitch_request: 0x00040008,
-        tag_gp_bitwidth: 4,
-        tag_gp_padding: 4, /* Try changing to 8 */
-        pitch: 0, /* 0 */
-
-        end_tag: 0,
-    };
-
-
-    unsafe 
-    {
-        us_mailbox_send(&get_pitch_msg as *const GetPitchMsg as usize as u32, PROPERTY_CHANNEL);
-
-        // For debugging purposes...
-        debug_rc("Get pitch: ", rctoe(get_pitch_msg.response_code));
-    }
-
-    return get_pitch_msg.pitch;
 }
 
 /*
@@ -351,92 +260,6 @@ pub fn fb_initb()
     }
 }
 
-pub fn fb_init()
-{
-    // 80, /* The whole buffer is 80 bytes */
-    // 0, /* Request response code is zero */
-    // 0x00048003, 8, 0, 640, 480, /* This tag sets the screen size to 640 x 480 */
-    // 0x00048004, 8, 0, 640, 480, /* This tag sets the virtual screen size to 640 x 480 */
-    // 0x00048005, 4, 0, 24, /* This tag sets the depth to 24 bits */
-    // 0,
-    // 0, 0, 0
-    /* Could add some args but for now this is good... */
-    let buffer: FbDescMsg = FbDescMsg {
-        buf_len: 80, 
-        response_code: 0, 
-        
-        tag_screensize: 0x00048003, 
-        tag_ss_bitwidth: 8, 
-        tag_ss_padding: 8, 
-        tag_ss_width: 640, 
-        tag_ss_height: 480,
-        
-        tag_vscreensize: 0x00048004, 
-        tag_vss_bitwidth: 8, 
-        tag_vss_padding: 8, /* 0 */ 
-        tag_vss_width: 640, 
-        tag_vss_height: 480,
-        
-        tag_bitdepth: 0x00048005, 
-        tag_bd_bitwidth: 4, 
-        tag_bd_padding: 4, /* 0 */ 
-        tag_bd_bitdepth: 24,
-        
-        end_tag: 0,
-    };
-
-    let mut get_fb: FbInitMsg = FbInitMsg {
-        buf_len: 32,
-        response_code: 0,
-        
-        tag_framebuffer_request: 0x00040001,
-        tag_fbr_bitwidth: 8,
-        tag_fbr_alignment: 16, /* Try changing to 8 */
-        base_ptr: 0, /* 0 */
-        ptr_size: 0,
-
-        end_tag: 0,
-    };
-
-    use crate::uart::{uart_puts, uart_putc, uart_writeaddr};
-    use crate::memory::{mem_v2p};
-
-    unsafe
-    {
-        us_mailbox_send(&buffer as *const FbDescMsg as usize as u32,
-                        PROPERTY_CHANNEL);
-        debug_rc("Framebuffer Description Status: ", 
-                rctoe(buffer.response_code));
-        
-        us_mailbox_send(&get_fb as *const FbInitMsg as usize as u32, PROPERTY_CHANNEL);
-
-        let pitch = get_pitch();
-
-        // let fb_len: u32 = get_fb.tag_fbr_padding2;
-        // let fb = get_fb.tag_fbr_padding as *const [u32; 640*480*24];
-
-        debug_rc("Framebuffer Init Status: ", 
-                rctoe(get_fb.response_code));
-        
-
-        // debug_rc(release_buffer());
-        get_fb.base_ptr |= 0x40000000;
-        get_fb.base_ptr &=!0xC0000000;
-        test_gradient_render(get_fb.base_ptr, 0, 0, 640, 480, 24, pitch);
-        // use crate::font::{draw_font, draw_char, draw_string};
-        // use crate::font0::FONT0;
-        // let fontAddr = &FONT0[0] as *const u8 as usize;
-        // draw_font(FONT0, get_fb.base_ptr, 128, 96, 8, 16, 3);
-        // draw_char(FONT0, get_fb.base_ptr, 'H', 0, 0, 128, 96, 8, 16, 3);
-        // draw_char(FONT0, get_fb.base_ptr, 'e', 8, 0, 128, 96, 8, 16, 3);
-        // draw_char(FONT0, get_fb.base_ptr, 'l', 16, 0, 128, 96, 8, 16, 3);
-        // draw_char(FONT0, get_fb.base_ptr, 'l', 24, 0, 128, 96, 8, 16, 3);
-        // draw_char(FONT0, get_fb.base_ptr, 'o', 32, 0, 128, 96, 8, 16, 3);
-        // draw_char(FONT0, get_fb.base_ptr, '!', 40, 0, 128, 96, 8, 16, 3);
-        // draw_string(FONT0, get_fb.base_ptr, "Hello World!", 0, 0, 128, 96, 8, 16, 3);
-    }
-}
-
 /* Would help get rid of some of the passing of values along
  * Via functions and would give that nicce abstraction of a struct with implemented functions.
  */
@@ -516,91 +339,6 @@ pub unsafe fn draw_pixel(addr: u32, x: u32, y: u32, pitch: u32, bit_depth: u32, 
     let pixel = (addr + pixel_offset) as *mut u32;
     *pixel = color;
 }
-
-
-/*
-pub fn render(&mut self)
-{
-    let mut color = 0;
-    // drawRow$:
-    // ...
-    // sub y, #1
-    // ...
-    // teq y, #0
-    // bne drawRow$
-    for j in 0..self.y
-    {
-        // drawPixel$:
-        // ...
-        // sub x, #1
-        // teq x, #0
-        // bne drawPixel$
-        for i in 0..self.x
-        {
-            // add fbAddr, #2
-            // addr_offset += 2;
-            // strh colour, [fbAddr]
-            // pixel = unsafe {framebuffer.offset(addr_offset) as *mut u32};
-            // *pixel = color;
-            self.draw_pixel(i, j, color);
-        }
-        // add colour, #1
-        color += 1;
-    }
-}
-	
-pub fn draw_pixel(&mut self, x: u32, y: u32, color: u32)
-{
-    let framebuffer = self.gpu_ptr as *const u32;
-    let pixel_offset = (x + (y * self.phy_width)) * self.bit_depth;
-    let pixel = unsafe {framebuffer.offset(pixel_offset as isize) as *mut u32};
-    unsafe {*pixel = color};
-}
-	
-pub fn draw_line(&mut self, mut x0: i32, x1: i32, mut y0: i32, y1: i32, color: u32)
-{
-    let delta_x: i32;
-    let neg_delta_y: i32;
-    let step_x: i32;
-    let step_y: i32;
-    let mut error: i32;
-    if x1 > x0
-    {
-        delta_x = x1 - x0;
-        step_x = 1;
-    } else
-    {
-        delta_x = x1 - x0;
-        step_x = -1;
-    }
-    
-    if y1 > y0
-    {
-        neg_delta_y = -(y1 - y0);
-        step_y = 1;
-    } else
-    {
-        neg_delta_y = -(y1 - y0);
-        step_y = -1;
-    }
-    
-    // Bitshift by one is to simulate multiplication by 2
-    error = 0;
-    while x0 != x1 + step_x || y0 != y1 + step_y
-    {
-        self.draw_pixel(x0 as u32, y0 as u32, color);
-        if (error << 1) > neg_delta_y
-        {
-            x0 += step_x;
-            error += neg_delta_y;
-        } else if (error << 1) < delta_x
-        {
-            y0 += step_y;
-            error += delta_x;
-        }
-    }
-}
-*/
 
 /*
  * TODO:
