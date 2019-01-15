@@ -1,7 +1,7 @@
 // TODO:
 // Make a simple UART logger to increase
 // my ability to debug
-use crate::vol::{write32, read32};
+use crate::vol::{write32, read32, wor32};
 
 /* Should be part off gpio.rs */
 const GPFSEL1: u32 =    0x3F200004;
@@ -34,7 +34,7 @@ const AUX_MU_BAUD_REG: u32 = 0x3F215068;
 
 pub unsafe fn uart_setup()
 {
-    write32(AUX_ENABLES, 1);
+    wor32(AUX_ENABLES, 1);
     write32(AUX_MU_IER_REG, 0);
     write32(AUX_MU_CNTL_REG, 0);
     write32(AUX_MU_LCR_REG, 3);
@@ -44,8 +44,10 @@ pub unsafe fn uart_setup()
     write32(AUX_MU_BAUD_REG, 270);
 
     let mut ra = read32(GPFSEL1);    
-    ra &= !(7 << 12);
-    ra |= 2 << 12; // alt5
+    
+    ra &= !((7 << 12) | (7 << 15));
+    ra |= (2 << 12) | (2 << 15); // alt5
+    
     write32(GPFSEL1, ra);
 
     write32(GPPUD, 0);
@@ -54,14 +56,14 @@ pub unsafe fn uart_setup()
         asm!("nop");
     }
     /* Usefulness? */
-    write32(GPPUDCLK0, 1 << 14);
+    write32(GPPUDCLK0, (1 << 14) | (1 << 15));
     for _ in 0..150
     {
         asm!("nop");
     }
     write32(GPPUDCLK0, 0);
 
-    write32(AUX_MU_CNTL_REG, 2);
+    write32(AUX_MU_CNTL_REG, 3);
 }
 
 pub unsafe fn uart_putc(c: char)
