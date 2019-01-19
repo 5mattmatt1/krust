@@ -55,6 +55,7 @@ pub unsafe fn uart_setup()
     {
         asm!("nop");
     }
+    
     /* Usefulness? */
     write32(GPPUDCLK0, (1 << 14) | (1 << 15));
     for _ in 0..150

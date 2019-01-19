@@ -3,3 +3,6 @@ https://github.com/raspberrypi/linux/blob/3b01f059d2ef9e48aca5174fc7f3b5c40fe248
 
 It seems to be do an bitwise OR by 0x4000_0000 and then a bitwise AND NOT by 0xC000_0000 on the framebuffer's memory address.
 Will also have to look into the iounmap() and ioremap_wc() functions. They will probably end up being added to memory.rs.
+
+Raspberry Pi Zero W uses the brcmfmac driver for talking to the onboard wireless chip.
+

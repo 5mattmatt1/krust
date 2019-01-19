@@ -1,7 +1,15 @@
-csud/
-linux-ref/
-target/
-unused/
+rpi/csud/
+rpi/linux-ref/
+rpi/target/
+rpi/unused/
+rpi/firmware-master/
+rpi/peter_lemon/RaspberryPi/
+rpi2/csud/
+rpi2/linux-ref/
+rpi2/target/
+rpi2/unused/
+rpi2/firmware-master/
+rpi2/peter_lemon/RaspberryPi/
 *.img
 *.elf
 *.list
@@ -10,3 +18,5 @@ unused/
 *.py
 *.png
 *.log
+*.zip
+*.tar.gz

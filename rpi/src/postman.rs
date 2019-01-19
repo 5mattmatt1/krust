@@ -211,7 +211,7 @@ pub fn fb_initb()
     let mut fb_ptr: u32 = mail.mailbuffer[19];
 
     /* Get the framebuffer pitch (bytes per line) */
-	mail.mailbuffer[0] = 21;		// Total size
+	mail.mailbuffer[0] = 21;	// Total size
 	mail.mailbuffer[1] = 0;		// Request
 	mail.mailbuffer[2] = 0x40008;	// Display size
 	mail.mailbuffer[3] = 4;		// Buffer size

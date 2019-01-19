@@ -120,7 +120,7 @@ pub extern "C" fn main() {
     unsafe {
         uart_setup();
         uart_puts("UART Init!\n");
-        test_gpu();
+        // test_gpu();
         loop
         {
             asm!("nop");

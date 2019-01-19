@@ -1,0 +1,6 @@
+&mail[0]: 0x000159B0
+Get display size: Malformed Struct.
+Setup framebuffer: Malformed Struct.
+Get pitch: Malformed Struct.
+0x00000010
+0x00000010

@@ -1,0 +1,17 @@
+[package]
+name = "krust"
+version = "0.1.0"
+authors = ["Grainne Henderson <grainnehenderson@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+# uart_16550 = "0.1.0"
+# bootloader = "0.3.4"
+register = "0.2.0"
+heapless = "0.4.1"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"

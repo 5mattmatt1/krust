@@ -2,26 +2,23 @@
 .globl _start
 
 _start:
-    @ Obseleted by setup_stack
-    @ mov r0, #0xD2    @ IRQ mode
-    @ msr cpsr_c, r0   @ Put in IRQ mode, don't clear C bits
-    @ mov sp, #0x8000  @ Set IRQ stack pointer
-    @ mov r0, #0xD3    @ SVC mode
-    @ msr cpsr_c, r0   @ Put in SVC mode, don't clear C bits
-    @ mov sp, #0x7000  @ Set SVC stack pointer
-    
-    bl setup_stack
-    @ bl setup_cache
-    @ bl setup_vfp
+    @ Get me out of fucking hypervisor right fucking now
+    mrs r0,cpsr
+    bic r0,r0,#0x1F
+    orr r0,r0,#0x13
+    msr spsr_cxsf,r0
+    add r0,pc,#4
+    msr ELR_hyp,r0
+    eret
 
-    @ This doesn't seem right...
-    @ ldr r0, = _table
-    @ ldr r1, = _table_end
-    @ _table .req r0
-    @ _table_end .req r1
-    @ bl prologue
+    mov r0, #0xD2    @ IRQ mode
+    msr cpsr_c, r0   @ Put in IRQ mode, don't clear C bits
+    mov sp, #0x8000  @ Set IRQ stack pointer
+    mov r0, #0xD3    @ SVC mode
+    msr cpsr_c, r0   @ Put in SVC mode, don't clear C bits
+    mov sp, #0x7000  @ Set SVC stack pointer
 
-    bl main       @ Jump to C start routine
+    bl main
 
 @ ------------------------------------------------------------------------------
 @ Sets up stacks for all operating modes
