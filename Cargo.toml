@@ -1,0 +1,18 @@
+[package]
+name = "krust8"
+version = "0.0.1"
+authors = ["Matthew Henderson <mattw2018@hotmail.com>"]
+edition = "2018"
+
+[dependencies]
+raspi3_boot = { path = "raspi3_boot" }
+register = "0.3.2"
+spin = "0.4.9"
+
+[dependencies.lazy_static]
+version = "1.0"
+features = ["spin_no_std"]
+
+[package.metadata.cargo-xbuild]
+sysroot_path = "xbuild_sysroot"
+
