@@ -1,0 +1,14 @@
+*.img
+*.elf
+*.list
+*.bin
+*.o
+*.py
+*.png
+*.log
+*.zip
+*.tar.gz
+*.dd
+target/*
+krust8
+krust8.S
