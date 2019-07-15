@@ -18,7 +18,3 @@ pub mod btrfs;
 ///
 /// More detail at: [EXT2 OSDev](https://wiki.osdev.org/Ext2)
 pub mod ext2;
-
-fn main() {
-    println!("Hello, world!");
-}
