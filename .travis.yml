@@ -1,23 +1,18 @@
-language: rust
-
-rust: 
-  - nightly 
-
-cache: cargo
-
-before_script:
-  - rustup component add rust-src
-  - cargo install cargo-xbuild
-
-script:
-  - cargo xbuild --target aarch64-unknown-none
-
 # Best I can do for UnitTesting
 # Though I suppose I could write the
 # local scripts in Rust too, but I can write python
 # faster
 jobs:
   include:
+    - stage: Build
+      language: rust
+      rust: nightly 
+      cache: cargo
+      before_script:
+        - rustup component add rust-src
+        - cargo install cargo-xbuild
+      script:
+        - cargo xbuild --target aarch64-unknown-none
     - stage: QEMU Testing
       language: python
       python: "3.6"
