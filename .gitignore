@@ -3,7 +3,6 @@
 *.list
 *.bin
 *.o
-*.py
 *.png
 *.log
 *.zip
