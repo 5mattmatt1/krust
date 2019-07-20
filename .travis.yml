@@ -1,0 +1,10 @@
+language: rust
+rust:
+  - nightly
+
+before_script:
+  - rustup component add rust-src
+  - cargo install cargo-xbuild
+
+script:
+  - cargo xbuild --target aarch64-unknown-none
