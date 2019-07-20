@@ -10,7 +10,7 @@ jobs:
       cache: cargo
       before_script:
         - rustup component add rust-src
-        - cargo install cargo-xbuild
+        - cargo install cargo-xbuild --force
       script:
         - cargo xbuild --target aarch64-unknown-none
     - stage: QEMU Testing
