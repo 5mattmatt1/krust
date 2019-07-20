@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-const MMIO_BASE: u32 = 0x3F000000;
+pub const MMIO_BASE: u32 = 0x3F000000;
 
 const GPIO_BASE: u32 = MMIO_BASE + 0x0020_0000;
 /* Function? Select */
@@ -50,4 +50,3 @@ pub const GPPUD: *mut u32 = (GPIO_BASE + 0x94) as *mut u32;
 /* PUD Clock */
 pub const GPPUDCLK0: *mut u32 = (GPIO_BASE + 0x98) as *mut u32;
 pub const GPPUDCLK1: *mut u32 = (GPIO_BASE + 0x9C) as *mut u32;
-

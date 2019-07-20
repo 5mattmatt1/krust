@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-use crate::sdhci::RPISDIO;
+use crate::bitmath::*;
 
 pub struct BiosParameterBlock
 {
@@ -114,38 +114,6 @@ struct Inode
     dir_ent_node: Node
 }
 
-fn u8tou64(a: u8, b: u8, c: u8, d: u8, e: u8, f: u8, g: u8, h: u8) -> u64
-{
-    return (a as u64) << 56 | (b as u64) << 48 | (c as u64) << 40 | (d as u64) << 32 |
-           (e as u64) << 24 | (f as u64) << 16 | (g as u64) << 8 | (h as u64); 
-}
-
-fn u8tou32(a: u8, b: u8, c: u8, d: u8) -> u32
-{
-    return (a as u32) << 24 | (b as u32) << 16 | (c as u32) << 8 | (d as u32); 
-}
-
-fn u8tou16(a: u8, b: u8) -> u16
-{
-    return (a as u16) << 8 | (b as u16);
-}
-
-fn u8stou64(slice: &[u8]) -> u64
-{
-    return u8tou64(slice[7], slice[6], slice[5], slice[4], 
-                   slice[3], slice[2], slice[1], slice[0]);  
-}
-
-fn u8stou32(slice: &[u8]) -> u32
-{
-    return u8tou32(slice[3], slice[2], slice[1], slice[0]);
-}
-
-fn u8stou16(slice: &[u8]) -> u16
-{
-    return u8tou16(slice[1], slice[0]);
-}
-
 impl BiosParameterBlock
 {
     pub fn new(sector: [u8; 512]) -> Self
@@ -169,7 +137,7 @@ impl BiosParameterBlock
 
     pub fn dump(&self)
     {
-        use crate::uart::*;
+        
         uart_print!("BiosParameterBlock: (FAT32)\n");
         uart_print!("\tOEM:\t0x{:X}\n", self.oem_identifier);
         uart_print!("\tBytes per sector:\t0x{:X}\n", self.bps);
@@ -211,7 +179,7 @@ impl ExtBiosParameterBlock
 
     pub fn dump(&self)
     {
-        use crate::uart::*;
+        
         use core::str::from_utf8;
         uart_print!("Extended BIOS Parameter Block (FAT32): \n");
         uart_print!("\t# of Sectors per FAT:\t0x{:X}\n", self.num_sec_pfat);
@@ -254,7 +222,7 @@ impl DirEnt
 
     pub fn dump(&self)
     {
-        use crate::uart::*;
+        
         use core::str::from_utf8;
         uart_print!("Directory Entity (FAT32):\n");
         uart_print!("\tFilename:\t{}\n", from_utf8(&self.filename).unwrap());
@@ -271,7 +239,7 @@ impl DirEnt
 
     pub fn time_str(time: u16)
     {
-        use crate::uart::*;
+        
         const HOUR_MASK: u16 = 0xF800;
         const MINUTE_MASK: u16 = 0x07E0;
         const SECOND_MASK: u16 = 0x1F;
@@ -286,7 +254,7 @@ impl DirEnt
     // ISO 8601
     pub fn date_str(date: u16)
     {
-        use crate::uart::*;
+        
         const YEAR_MASK: u16 = 0xFE00;
         const MONTH_MASK: u16 = 0x01E0;
         const DAY_MASK: u16 = 0x001F;

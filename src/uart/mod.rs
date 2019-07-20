@@ -22,43 +22,22 @@
  * SOFTWARE.
  */
 
-use core::alloc::{GlobalAlloc, Layout};
-use core::ptr::null_mut;
-
-pub struct Heap
+/// Universal Asynchronous Reciever Transmitter
+pub trait Uart
 {
-    pub kernel_page_table: [u8; 4096],
-    pub user_page_table: [u8; 4096],
-}
-
-impl Heap
-{
-    pub unsafe fn init(&self)
+    fn init();
+    fn getc() -> char;
+    fn putc(c: char);
+    fn puts(s: &str)
     {
-
+        for byte in s.as_bytes()
+        {
+            Self::putc(*byte as char);
+        }
     }
 }
 
-unsafe impl GlobalAlloc for Heap
-{
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8
-    {
-        null_mut()
-    }
+/// UART1, Primary UART on Raspberry Pi 3
+#[macro_use]
+pub mod mini;
 
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout)
-    {
-
-    }
-}
-
-#[alloc_error_handler]
-fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
-    panic!("allocation error: {:?}", layout);
-}
-
-// use spin::Mutex;
-// use lazy_static::lazy_static;
-// lazy_static!
-// {
-// }

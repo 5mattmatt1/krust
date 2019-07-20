@@ -1,8 +1,8 @@
 #
 # MIT License
 #
-# Copyright (c) 2018-2019 Andre Richter <andre.o.richter@gmail.com>
-#
+# Copyright (c) 2018-2019 
+# 2018-2019 Matthew Henderson <mattw2018@hotmail.com>
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
@@ -23,38 +23,72 @@
 #
 
 TARGET = aarch64-unknown-none
+# TARGET = arm7-unknown-none
 
-KERNEL = krust8
-KERNEL_IMG = ${KERNEL}.img
+XRUSTC_FLAGS = --target=$(TARGET)
+# --release
+XRUSTC_CMD = cargo xrustc 
+
+# KERNEL = krust8
+KERNEL = krust
+ARM_VER = 8
+KERNEL_IMG = ${KERNEL}${ARM_VER}.img
 
 SOURCES = $(wildcard **/*.rs) $(wildcard **/*.S) link.ld
 
 OBJCOPY = cargo objcopy --
 OBJCOPY_PARAMS = --strip-all -O binary
 
+DOC_PARAMS = --document-private-items --document-private-items
+
 UTILS_CONTAINER = andrerichter/raspi3-utils
 DOCKER_CMD = docker run -it --rm -v $(shell pwd):/work -w /work
 QEMU_CMD = qemu-system-aarch64 -M raspi3 -kernel $(KERNEL_IMG)
 
-
 DEBUG = target/$(TARGET)/debug/$(KERNEL)
+RELEASE = target/$(TARGET)/release/$(KERNEL)
+
+# TODO: Read up on Make-fu and get it so that
+# it creates a set of targets based off of a list of tests in the src/bin directory
+TEST_DMA = target/$(TARGET)/debug/test_dma
+TEST_DMA_IMG = test_dma.img
+TEST_SDHCI = target/$(TARGET)/debug/test_sdhci
+TEST_SDHCI_IMG = test_sdhci.img
+TEST_MAILBOX = target/$(TARGET)/debug/test_mailbox
+TEST_MAILBOX_IMG = test_mailbox.img
 
 .PHONY: all qemu clippy clean objdump nm
 
 all: clean $(KERNEL_IMG)
 
+tests: $(TEST_DMA_IMG) $(TEST_SDHCI_IMG) $(TEST_MAILBOX_IMG)
+
 $(DEBUG): $(SOURCES)
-	cargo xbuild --target=$(TARGET) 
+	cargo xbuild --target=$(TARGET)
 
 $(KERNEL_IMG): $(DEBUG)
-	cp $< .
-	$(OBJCOPY) $(OBJCOPY_PARAMS) $< $(KERNEL_IMG)
+	$(OBJCOPY) $(OBJCOPY_PARAMS) $< $@
+
+$(TEST_DMA_IMG): $(TEST_DMA) $(DEBUG)
+	$(OBJCOPY) $(OBJCOPY_PARAMS) $< $@
+
+$(TEST_SDHCI_IMG): $(TEST_SDHCI) $(DEBUG)
+	$(OBJCOPY) $(OBJCOPY_PARAMS) $< $@
+
+$(TEST_MAILBOX_IMG): $(TEST_MAILBOX) $(DEBUG)
+	$(OBJCOPY) $(OBJCOPY_PARAMS) $< $@
 
 qemu: all
 	$(DOCKER_CMD) $(UTILS_CONTAINER) $(QEMU_CMD) -serial null -serial stdio
 
 clippy:
 	cargo xclippy --target=$(TARGET)
+
+check:
+	cargo xcheck --target=$(TARGET)
+
+doc:
+	cargo doc
 
 clean:
 	cargo clean

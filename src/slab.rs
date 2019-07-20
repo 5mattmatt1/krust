@@ -24,5 +24,6 @@
 
 /*
  * I know linux uses slab instead of a Linked list system so I'm gonna look into it a bit.
- * Paritally to differntiate from Phil OS's stuff...
+ * Partially to differntiate from Phil OS's stuff...
  */
+

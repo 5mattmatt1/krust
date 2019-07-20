@@ -29,7 +29,7 @@ const SYSTMR_HI: u32 = MMIO_BASE + 0x00003008;
 /// Wait N CPU cycles (ARM CPU only)
 pub fn wait_cycles(mut n: u32)
 {
-    while (n != 0)
+    while n != 0
     {
         unsafe {
             asm!("nop");
@@ -39,11 +39,11 @@ pub fn wait_cycles(mut n: u32)
 }
 
 /// Wait N microsec (ARM CPU only)
-pub fn wait_msec(n: u32)
+pub fn wait_msec(n: u64)
 {
-    let mut t: u32;
-    let mut r: u32;
-    let f: u32;
+    let mut t: u64;
+    let mut r: u64;
+    let f: u64;
     unsafe
     {
         // get the current counter frequency

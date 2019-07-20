@@ -173,7 +173,6 @@ impl MasterBoostRecord
 
     pub fn dump(&self)
     {
-        use crate::uart::*;
         uart_print!("Part0:\n"); 
         uart_print!("\tboot:\t0x{:X}\n", self.mpt.part0.boot);
         uart_print!("\ttype:\t0x{:X}\n", self.mpt.part0.part_type);

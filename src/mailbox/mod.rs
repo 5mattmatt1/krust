@@ -22,43 +22,16 @@
  * SOFTWARE.
  */
 
-use core::alloc::{GlobalAlloc, Layout};
-use core::ptr::null_mut;
+// Might want to factor this out so that the Mailbox trait is templated instead
+/// The VideoCore IV GPU is 32-bit regardless of host architecture.
+pub type Mail = u32;
 
-pub struct Heap
+///
+pub trait Mailbox
 {
-    pub kernel_page_table: [u8; 4096],
-    pub user_page_table: [u8; 4096],
+    fn send(channel: u8, mail: Mail);
+    fn read(channel: u8) -> Mail;
 }
 
-impl Heap
-{
-    pub unsafe fn init(&self)
-    {
-
-    }
-}
-
-unsafe impl GlobalAlloc for Heap
-{
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8
-    {
-        null_mut()
-    }
-
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout)
-    {
-
-    }
-}
-
-#[alloc_error_handler]
-fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
-    panic!("allocation error: {:?}", layout);
-}
-
-// use spin::Mutex;
-// use lazy_static::lazy_static;
-// lazy_static!
-// {
-// }
+/// The VideoCore IV GPU mailbox
+pub mod vc;

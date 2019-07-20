@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2018-2019 Matthew Henderson <mattw2018@hotmail.com>
+ * Copyright (c) 2018 Andre Richter <andre.o.richter@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,43 +22,35 @@
  * SOFTWARE.
  */
 
-use core::alloc::{GlobalAlloc, Layout};
-use core::ptr::null_mut;
+ENTRY(_boot_cores);
 
-pub struct Heap
+SECTIONS
 {
-    pub kernel_page_table: [u8; 4096],
-    pub user_page_table: [u8; 4096],
-}
+    . = 0x80000;
 
-impl Heap
-{
-    pub unsafe fn init(&self)
+    .text :
     {
-
-    }
-}
-
-unsafe impl GlobalAlloc for Heap
-{
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8
-    {
-        null_mut()
+        KEEP(*(.text.boot)) *(.text .text.*)
     }
 
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout)
+    .rodata :
     {
-
+        *(.rodata .rodata.*)
     }
+
+    .data :
+    {
+        *(.data .data.*)
+    }
+
+    .bss ALIGN(8):
+    {
+        __bss_start = .;
+        *(.bss .bss.*)
+        *(COMMON)
+        __bss_end = .;
+    }
+
+    /DISCARD/ : { *(.comment) *(.gnu*) *(.note*) *(.eh_frame*) }
 }
 
-#[alloc_error_handler]
-fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
-    panic!("allocation error: {:?}", layout);
-}
-
-// use spin::Mutex;
-// use lazy_static::lazy_static;
-// lazy_static!
-// {
-// }

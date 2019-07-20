@@ -1,6 +1,6 @@
 [package]
-name = "krust8"
-version = "0.0.1"
+name = "krust"
+version = "0.0.0"
 authors = ["Matthew Henderson <mattw2018@hotmail.com>"]
 edition = "2018"
 
@@ -16,3 +16,6 @@ features = ["spin_no_std"]
 [package.metadata.cargo-xbuild]
 sysroot_path = "xbuild_sysroot"
 
+[features]
+# Treat lots of warnings as a build error.
+strict = []
