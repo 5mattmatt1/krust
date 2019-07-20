@@ -28,3 +28,4 @@ pub mod panic;
 pub mod time;
 pub mod bitmath;
 pub mod utils;
+pub mod qemu;

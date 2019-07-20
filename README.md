@@ -1,6 +1,4 @@
-[![Build Status](https://travis-ci.org/5mattmatt1/krust.svg?branch=basic_fat32)](https://travis-ci.org/5mattmatt1/krust)
-
-# Krust
+# Krust [![Build Status](https://travis-ci.org/5mattmatt1/krust.svg?branch=basic_fat32)](https://travis-ci.org/5mattmatt1/krust)
 This started out as an endeavor to better understand how software interacts with hardware and how linux kernel code works, learn some Rust programming along the way, and maybe even create a cool x86 kernel partially based off of Phillip Opperman's tutorials. Recently my goal has shifted to create my own Raspberry Pi kernel that has code that is a little more readable than what is in the linux kernel repository. 
 
 # Peripherals

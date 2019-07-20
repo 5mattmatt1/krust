@@ -129,6 +129,7 @@ pub struct DmaControlBlock
     pub dst: u32,
     /// Length in BYTES not number of elements.
     pub len: u32,
+    /// Should break up into dst_stride and src_stride
     pub stride: u32,
     pub ncba: u32,
     pub reserved1: u32,
@@ -144,6 +145,8 @@ pub struct DmaChannel
 
 impl DmaChannel
 {
+    /// TODO: It looks like the reason that 2D mode was the improper stride values
+    /// Because stride is actually two u16's.
     pub fn copy(&self, cb: &mut DmaControlBlock)
     {
         let cba_ptr: *mut u32 = (self.addr + DMA_CBA) as *mut u32;
@@ -161,7 +164,6 @@ impl DmaChannel
             cs = read_volatile(cs_ptr);
             asm!("nop");
         }
-        uart_println!("Control status: {}", cs);
         write_volatile(cs_ptr, 0x2);
         }
 
