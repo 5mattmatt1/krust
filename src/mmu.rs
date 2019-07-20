@@ -147,7 +147,7 @@ pub fn init(_kpage_table: &[u8], _upage_table: &[u8])
         panic!("ERROR: 4k granule or 36 bit address space not supported\n");
     }
 
-    asm!("msr mair_el1, $0" : "=r"());
+    // asm!("msr mair_el1, $0" : "=r"());
     // asm!("msr tcr_el1, $0; isb" :"=r"());
     // tell the MMU where our translation tables are.
     // Userspace
